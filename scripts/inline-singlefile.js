@@ -27,7 +27,7 @@ if (!fs.existsSync(indexPath)) {
 let html = fs.readFileSync(indexPath, 'utf8');
 
 // Inline external <script src="..."> tags (same-origin only).
-html = html.replace(/<script([^>]*)\ssrc="([^"]+)"([^>]*)><\/script>/g, (m, pre, src, post) => {
+html = html.replace(/<script\b([^>]*)\ssrc="([^"]+)"([^>]*)><\/script\s*>/gi, (m, pre, src, post) => {
   if (/^https?:|^\/\//.test(src)) return m;
   const file = path.join(browserDir, src.replace(/^\.?\//, ''));
   if (!fs.existsSync(file)) {

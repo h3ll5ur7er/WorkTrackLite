@@ -16,7 +16,7 @@ import { entriesToCsv } from '../../services/csv';
 })
 export class NodeDetailComponent {
   private data = inject(DataService);
-  private timer = inject(TimerService);
+  protected timer = inject(TimerService);
 
   /** Node selected in the tree. */
   readonly node = input<Node | null>(null);
