@@ -1,0 +1,48 @@
+<div class="app" [attr.data-theme]="data.settings().theme">
+  <header class="app__header">
+    <div class="app__brand">
+      <span class="app__logo">⏱</span>
+      <strong>WorkTrackLite</strong>
+    </div>
+    <div class="app__tools">
+      <button class="btn" (click)="openPalette()" title="Command palette (Ctrl/Cmd+K)">⌘K</button>
+      <a class="btn" href="worktrack-singlefile.html" download="worktracklite.html"
+         title="Download the entire app as a single HTML file">⬇ Single-file</a>
+      <button class="btn" (click)="toggleTheme()" title="Toggle theme">
+        {{ data.settings().theme === 'dark' ? '☀' : '☾' }}
+      </button>
+    </div>
+  </header>
+
+  <ng-container *ngIf="data.ready(); else loading">
+    <ng-container *ngIf="!empty(); else first">
+      <main class="app__main">
+        <aside class="app__sidebar">
+          <div class="app__sidebar-actions">
+            <button class="btn btn--primary" (click)="showAddRoot.set(!showAddRoot())">+ New top-level</button>
+          </div>
+          <div *ngIf="showAddRoot()" class="row">
+            <input placeholder="Name" [ngModel]="newRootName()" (ngModelChange)="newRootName.set($event)" />
+            <input placeholder="Kind" [ngModel]="newRootKind()" (ngModelChange)="newRootKind.set($event)" />
+            <button class="btn" (click)="addRoot()">Add</button>
+          </div>
+          <app-tree #tree></app-tree>
+        </aside>
+        <section class="app__content">
+          <app-node-detail [node]="tree.selectedNode()" (addedChild)="tree.select($event)"></app-node-detail>
+        </section>
+      </main>
+      <app-timer-bar></app-timer-bar>
+    </ng-container>
+
+    <ng-template #first>
+      <app-setup></app-setup>
+    </ng-template>
+  </ng-container>
+
+  <ng-template #loading>
+    <div class="app__loading">Loading…</div>
+  </ng-template>
+
+  <app-command-palette></app-command-palette>
+</div>

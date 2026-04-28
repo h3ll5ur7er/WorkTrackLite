@@ -1,0 +1,115 @@
+<ng-container *ngIf="node() as n; else empty">
+  <header class="nd__header">
+    <div class="nd__title">
+      <span class="nd__kind">{{ n.kind }}</span>
+      <input class="nd__name" [ngModel]="n.name" (change)="renameNode($any($event.target).value)" />
+    </div>
+    <div class="nd__actions">
+      <button *ngIf="!isRunningHere()" class="btn btn--primary" (click)="startTimer()">▶ Start</button>
+      <button *ngIf="isRunningHere()" class="btn btn--danger" (click)="stopTimer()">■ Stop</button>
+      <button class="btn" (click)="exportCsv('node')">CSV (this)</button>
+      <button class="btn" (click)="exportCsv('subtree')">CSV (subtree)</button>
+      <button class="btn btn--ghost" (click)="deleteNode()">Delete</button>
+    </div>
+  </header>
+
+  <section class="nd__panel">
+    <h3>Budget</h3>
+    <div class="grid">
+      <label>Type
+        <select [ngModel]="n.budget.type" (ngModelChange)="updateBudgetType($event)">
+          <option value="none">None (track only)</option>
+          <option value="per_hour">Per-hour (sum up)</option>
+          <option value="fixed">Fixed (burn-down)</option>
+        </select>
+      </label>
+      <label>Budget (hours)
+        <input type="number" min="0" step="0.25"
+          [ngModel]="(n.budget.seconds || 0) / 3600"
+          (change)="updateBudgetHours($any($event.target).valueAsNumber)" />
+      </label>
+      <label>Soft limit (hours, optional)
+        <input type="number" min="0" step="0.25"
+          [ngModel]="n.budget.softLimit ? n.budget.softLimit / 3600 : null"
+          (change)="updateSoftLimitHours($any($event.target).valueAsNumber)" />
+      </label>
+    </div>
+
+    <div class="report" *ngIf="nodeReport() as r">
+      <div class="report__row">
+        <span class="report__label">Tracked (this node)</span>
+        <span class="report__value">{{ formatHMS(r.trackedSeconds) }}</span>
+      </div>
+      <div class="report__row" *ngIf="r.type !== 'none'">
+        <span class="report__label">{{ r.type === 'fixed' ? 'Remaining' : 'Vs. target' }}</span>
+        <span class="report__value"
+              [class.report__value--over]="r.overBudget"
+              [class.report__value--soft]="r.softBreached">
+          {{ formatHMS(r.remainingSeconds) }}
+        </span>
+      </div>
+      <div class="report__bar" *ngIf="r.type !== 'none' && r.budgetSeconds > 0">
+        <div class="report__bar-fill"
+             [style.width.%]="(r.ratio * 100) > 100 ? 100 : (r.ratio * 100)"
+             [class.report__bar-fill--over]="r.overBudget"
+             [class.report__bar-fill--soft]="r.softBreached"></div>
+      </div>
+    </div>
+
+    <div class="report" *ngIf="subtreeReport() as sr">
+      <div class="report__row">
+        <span class="report__label">Tracked (subtree)</span>
+        <span class="report__value">{{ formatHMS(sr.trackedSeconds) }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="nd__panel">
+    <h3>Add child</h3>
+    <div class="row">
+      <input placeholder="Name" [ngModel]="newChildName()" (ngModelChange)="newChildName.set($event)" />
+      <input [placeholder]="'Kind (' + suggestedChildKind() + ')'"
+             [ngModel]="newChildKind()" (ngModelChange)="newChildKind.set($event)" />
+      <button class="btn btn--primary" (click)="addChild()">+ Add</button>
+    </div>
+  </section>
+
+  <section class="nd__panel">
+    <h3>Manual entry</h3>
+    <div class="row">
+      <input type="datetime-local" [ngModel]="manualStart()" (ngModelChange)="manualStart.set($event)" />
+      <input type="datetime-local" [ngModel]="manualEnd()" (ngModelChange)="manualEnd.set($event)" />
+      <input placeholder="Note (optional)" [ngModel]="manualNote()" (ngModelChange)="manualNote.set($event)" />
+      <button class="btn" (click)="addManual()">+ Log time</button>
+    </div>
+  </section>
+
+  <section class="nd__panel">
+    <h3>Entries ({{ entriesForNode().length }})</h3>
+    <table class="entries" *ngIf="entriesForNode().length; else noEntries">
+      <thead>
+        <tr><th>Start</th><th>End</th><th>Duration</th><th>Note</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let e of entriesForNode()">
+          <td>{{ e.start | date:'short' }}</td>
+          <td>
+            <ng-container *ngIf="e.end !== null; else live">{{ e.end | date:'short' }}</ng-container>
+            <ng-template #live><em>running…</em></ng-template>
+          </td>
+          <td>{{ formatHMS(((e.end ?? timer.now()) - e.start) / 1000) }}</td>
+          <td>{{ e.note }}</td>
+          <td><button class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)">×</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #noEntries><p class="muted">No entries yet — start the timer or log time manually.</p></ng-template>
+  </section>
+</ng-container>
+
+<ng-template #empty>
+  <div class="nd__empty">
+    <h2>Select a node</h2>
+    <p class="muted">Pick something on the left, or add a top-level node from the “+” button.</p>
+  </div>
+</ng-template>

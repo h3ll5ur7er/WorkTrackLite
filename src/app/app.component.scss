@@ -1,0 +1,60 @@
+:host { display: block; height: 100%; }
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--c-bg);
+  color: var(--c-fg);
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-bg-2);
+  }
+  &__brand { display: flex; gap: 8px; align-items: center; }
+  &__logo { font-size: 1.2rem; }
+  &__tools { display: flex; gap: 6px; }
+
+  &__main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) 1fr;
+    min-height: 0;
+  }
+
+  &__sidebar {
+    border-right: 1px solid var(--c-border);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  &__sidebar-actions { display: flex; gap: 6px; }
+
+  &__content {
+    padding: 16px 20px;
+    overflow: auto;
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--c-fg-3);
+  }
+}
+
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.row input { flex: 1 1 100px; padding: 4px 6px; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 4px; color: inherit; font: inherit; }
+
+@media (max-width: 720px) {
+  .app__main { grid-template-columns: 1fr; }
+  .app__sidebar { max-height: 40vh; }
+}
