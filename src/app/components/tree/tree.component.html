@@ -1,0 +1,28 @@
+<div class="tree">
+  <input
+    class="tree__filter"
+    type="search"
+    placeholder="Filter…"
+    [ngModel]="filter()"
+    (ngModelChange)="filter.set($event)" />
+
+  <ul class="tree__list">
+    <ng-container *ngTemplateOutlet="branch; context: { $implicit: roots() }"></ng-container>
+  </ul>
+
+  <ng-template #branch let-nodes>
+    <li *ngFor="let n of nodes" [hidden]="!isVisible(n.id)">
+      <button
+        type="button"
+        class="tree__node"
+        [class.tree__node--active]="selected() === n.id"
+        (click)="select(n.id)">
+        <span class="tree__kind">{{ n.kind }}</span>
+        <span class="tree__name">{{ n.name }}</span>
+      </button>
+      <ul *ngIf="childrenOf(n.id).length">
+        <ng-container *ngTemplateOutlet="branch; context: { $implicit: childrenOf(n.id) }"></ng-container>
+      </ul>
+    </li>
+  </ng-template>
+</div>

@@ -1,0 +1,52 @@
+.tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+
+  &__filter {
+    margin: 0 0 8px 0;
+    padding: 6px 8px;
+    background: var(--c-bg-2);
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    color: inherit;
+    font: inherit;
+  }
+
+  &__list,
+  ul {
+    list-style: none;
+    margin: 0;
+    padding-left: 12px;
+  }
+
+  &__list { padding-left: 0; overflow: auto; }
+
+  &__node {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font: inherit;
+
+    &:hover { background: var(--c-bg-2); }
+    &--active { background: var(--c-accent-bg); color: var(--c-accent); }
+  }
+
+  &__kind {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--c-fg-3);
+    letter-spacing: 0.04em;
+  }
+
+  &__name { flex: 1; }
+}

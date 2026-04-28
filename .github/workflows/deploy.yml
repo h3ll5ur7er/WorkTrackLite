@@ -1,0 +1,51 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build (with single-file artifact)
+        run: npm run build:singlefile
+      - name: Stage Pages output
+        run: |
+          mkdir -p _site
+          cp -r dist/worktrack/browser/. _site/
+          cp dist/worktrack-singlefile.html _site/worktrack-singlefile.html
+          # SPA-friendly 404 fallback (gh-pages serves 404.html for unknown routes)
+          cp _site/index.html _site/404.html
+          # Disable Jekyll processing
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
