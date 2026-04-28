@@ -11,10 +11,9 @@ interface Action {
 }
 
 @Component({
-  selector: 'app-command-palette',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
+    selector: 'app-command-palette',
+    imports: [CommonModule, FormsModule],
+    template: `
     <div class="cp" *ngIf="open()" (click)="close($event)">
       <div class="cp__panel" (click)="$event.stopPropagation()">
         <input #input class="cp__input"
@@ -35,7 +34,7 @@ interface Action {
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .cp { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-start; justify-content: center; padding-top: 10vh; z-index: 1000; }
     .cp__panel { width: min(560px, 92vw); background: var(--c-bg-2); border: 1px solid var(--c-border); border-radius: 8px; box-shadow: 0 24px 64px rgba(0,0,0,0.4); overflow: hidden; }
     .cp__input { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 1.05rem; background: transparent; color: inherit; border: 0; border-bottom: 1px solid var(--c-border); outline: none; }
@@ -44,7 +43,7 @@ interface Action {
     .cp__item--active { background: var(--c-accent-bg); color: var(--c-accent); }
     .cp__hint { color: var(--c-fg-3); font-size: 0.8rem; }
     .cp__empty { color: var(--c-fg-3); padding: 12px 14px; cursor: default; }
-  `],
+  `]
 })
 export class CommandPaletteComponent implements AfterViewInit {
   data = inject(DataService);

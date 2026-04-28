@@ -6,11 +6,10 @@ import { Node } from '../../data/models';
 import { indexChildren } from '../../services/budget';
 
 @Component({
-  selector: 'app-tree',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './tree.component.html',
-  styleUrl: './tree.component.scss',
+    selector: 'app-tree',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './tree.component.html',
+    styleUrl: './tree.component.scss'
 })
 export class TreeComponent {
   private data = inject(DataService);

@@ -4,10 +4,9 @@ import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
 
 @Component({
-  selector: 'app-timer-bar',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-timer-bar',
+    imports: [CommonModule],
+    template: `
     <div class="bar" [class.bar--running]="running()">
       <div class="bar__left">
         <ng-container *ngIf="running() as r; else idle">
@@ -26,7 +25,7 @@ import { TimerService } from '../../services/timer.service';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .bar {
       display: flex; justify-content: space-between; align-items: center;
       gap: 12px; padding: 8px 14px;
@@ -40,7 +39,7 @@ import { TimerService } from '../../services/timer.service';
     .bar__idle { color: var(--c-fg-3); }
     .bar__right { display: flex; gap: 6px; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  `],
+  `]
 })
 export class TimerBarComponent {
   data = inject(DataService);

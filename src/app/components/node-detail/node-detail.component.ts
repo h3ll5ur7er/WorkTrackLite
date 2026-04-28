@@ -8,11 +8,10 @@ import { descendantIds, indexChildren, reportForBudget, totalSeconds } from '../
 import { entriesToCsv } from '../../services/csv';
 
 @Component({
-  selector: 'app-node-detail',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './node-detail.component.html',
-  styleUrl: './node-detail.component.scss',
+    selector: 'app-node-detail',
+    imports: [CommonModule, FormsModule],
+    templateUrl: './node-detail.component.html',
+    styleUrl: './node-detail.component.scss'
 })
 export class NodeDetailComponent {
   private data = inject(DataService);

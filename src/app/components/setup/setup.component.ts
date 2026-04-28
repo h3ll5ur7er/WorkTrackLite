@@ -4,10 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
 
 @Component({
-  selector: 'app-setup',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
+    selector: 'app-setup',
+    imports: [CommonModule, FormsModule],
+    template: `
     <div class="setup">
       <h2>Welcome to WorkTrackLite</h2>
       <p class="muted">Pick a starting hierarchy template — you can change everything later.</p>
@@ -26,7 +25,7 @@ import { DataService } from '../../services/data.service';
       <button class="btn btn--primary" [disabled]="!picked() || !firstName().trim()" (click)="finish()">Get started</button>
     </div>
   `,
-  styles: [`
+    styles: [`
     .setup { max-width: 520px; margin: 8vh auto; padding: 24px; background: var(--c-bg-2); border: 1px solid var(--c-border); border-radius: 12px; }
     .setup h2 { margin-top: 0; }
     .muted { color: var(--c-fg-3); }
@@ -36,7 +35,7 @@ import { DataService } from '../../services/data.service';
     .tpl--active { background: var(--c-accent-bg); border-color: var(--c-accent); }
     .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
     .row input { flex: 1; padding: 6px 8px; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 4px; color: inherit; font: inherit; }
-  `],
+  `]
 })
 export class SetupComponent {
   data = inject(DataService);

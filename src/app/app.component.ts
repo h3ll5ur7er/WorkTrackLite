@@ -9,19 +9,18 @@ import { CommandPaletteComponent } from './components/command-palette/command-pa
 import { SetupComponent } from './components/setup/setup.component';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    TreeComponent,
-    NodeDetailComponent,
-    TimerBarComponent,
-    CommandPaletteComponent,
-    SetupComponent,
-  ],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
+    selector: 'app-root',
+    imports: [
+        CommonModule,
+        FormsModule,
+        TreeComponent,
+        NodeDetailComponent,
+        TimerBarComponent,
+        CommandPaletteComponent,
+        SetupComponent,
+    ],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit {
   data = inject(DataService);
