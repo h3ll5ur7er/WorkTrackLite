@@ -55,6 +55,13 @@ export class NodeDetailComponent {
     return this.data.entries().filter(e => ids.has(e.nodeId));
   });
 
+  /** True when the node has no children (leaf node). */
+  readonly isLeaf = computed(() => {
+    const n = this.node();
+    if (!n) return false;
+    return !this.data.nodes().some(x => x.parentId === n.id);
+  });
+
   readonly nodeReport = computed(() => {
     const n = this.node();
     if (!n) return null;
@@ -127,7 +134,10 @@ export class NodeDetailComponent {
   async toggleShowInDashboard(value: boolean) {
     const n = this.node();
     if (!n) return;
-    await this.data.updateNode(n.id, { showInDashboard: value });
+    // Clear the override when the new value matches the default (isLeaf),
+    // so the node falls back to automatic visibility logic.
+    const showInDashboard = value === this.isLeaf() ? undefined : value;
+    await this.data.updateNode(n.id, { showInDashboard });
   }
   async deleteNode() {
     const n = this.node();

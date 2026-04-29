@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, AfterViewInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { Component, AfterViewInit, Injector, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DataService } from './services/data.service';
 import { TreeComponent } from './components/tree/tree.component';
@@ -29,10 +29,17 @@ import { AppView } from './data/models';
 })
 export class AppComponent implements AfterViewInit {
   data = inject(DataService);
+  private injector = inject(Injector);
 
   @ViewChild(TreeComponent) treeRef?: TreeComponent;
   @ViewChild(CommandPaletteComponent) paletteRef?: CommandPaletteComponent;
-  @ViewChild(DashboardComponent) dashboardRef?: DashboardComponent;
+
+  // Use a setter so the callback is wired immediately when the component mounts
+  // (DashboardComponent is conditionally rendered and may mount/unmount).
+  @ViewChild(DashboardComponent)
+  set dashboardRef(comp: DashboardComponent | undefined) {
+    if (comp) comp.openInManageFn = (id) => this.openInManage(id);
+  }
 
   readonly empty = computed(() => this.data.nodes().length === 0);
   showAddRoot = signal(false);
@@ -47,15 +54,6 @@ export class AppComponent implements AfterViewInit {
     { id: 'manage',   label: 'Manage',     icon: '⚙' },
   ];
 
-  constructor() {
-    // Hook the dashboard's "Open in Manage" callback whenever it's mounted
-    effect(() => {
-      if (this.dashboardRef) {
-        this.dashboardRef.openInManageFn = (id) => this.openInManage(id);
-      }
-    });
-  }
-
   ngAfterViewInit(): void {
     if (this.paletteRef) this.paletteRef.selectNode = (id) => this.openInManage(id);
   }
@@ -64,7 +62,8 @@ export class AppComponent implements AfterViewInit {
 
   openInManage(nodeId: string) {
     void this.data.updateSettings({ view: 'manage', lastNodeId: nodeId });
-    queueMicrotask(() => this.treeRef?.select(nodeId));
+    // Wait for the Manage view to mount before selecting the node in the tree.
+    afterNextRender(() => this.treeRef?.select(nodeId), { injector: this.injector });
   }
 
   toggleTheme(): void {

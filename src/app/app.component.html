@@ -18,7 +18,8 @@
     <div class="app__tools">
       <button class="btn" (click)="openPalette()" title="Command palette (Ctrl/Cmd+K)">⌘K</button>
       <a class="btn" href="worktrack-singlefile.html" download="worktracklite.html"
-         title="Download the entire app as a single HTML file">⬇</a>
+         title="Download the entire app as a single HTML file"
+         aria-label="Download the entire app as a single HTML file">⬇</a>
       <button class="btn" (click)="toggleTheme()" title="Toggle theme">
         {{ data.settings().theme === 'dark' ? '☀' : '☾' }}
       </button>

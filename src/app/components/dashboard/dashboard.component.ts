@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { Node } from '../../data/models';
+import { Node, TimeEntry } from '../../data/models';
 import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
 import { descendantIds, indexChildren, reportForBudget, totalSeconds } from '../../services/budget';
@@ -33,7 +33,20 @@ export class DashboardComponent {
   readonly menu = signal<{ x: number; y: number; nodeId: string } | null>(null);
   readonly query = signal('');
 
-  private readonly childrenByParent = computed(() => indexChildren(this.data.nodes()));
+  // Build the child map from non-archived nodes only, so a node whose only
+  // children are archived is still treated as a leaf for dashboard purposes.
+  private readonly childrenByParent = computed(() => indexChildren(this.data.nodes().filter(n => !n.archived)));
+
+  /** Entries indexed by nodeId for O(1) lookup, avoiding per-card full-table scans. */
+  private readonly entriesIndex = computed(() => {
+    const m = new Map<string, TimeEntry[]>();
+    for (const e of this.data.entries()) {
+      const arr = m.get(e.nodeId) ?? [];
+      arr.push(e);
+      m.set(e.nodeId, arr);
+    }
+    return m;
+  });
 
   /** Nodes that should appear on the dashboard (leaves by default, overridable). */
   private readonly dashboardNodes = computed<Node[]>(() => {
@@ -49,8 +62,8 @@ export class DashboardComponent {
   readonly cards = computed<DashboardCard[]>(() => {
     const all = this.data.nodes();
     const byId = new Map(all.map(n => [n.id, n] as const));
-    const entries = this.data.entries();
     const childMap = this.childrenByParent();
+    const idx = this.entriesIndex();
     const now = this.timer.now();
     const running = this.timer.running();
     const q = this.query().trim().toLowerCase();
@@ -66,7 +79,11 @@ export class DashboardComponent {
       // Aggregate tracked seconds across the whole subtree of this card,
       // so a card with sub-tasks still reflects everything below it.
       const ids = new Set(descendantIds(node.id, childMap));
-      const ents = entries.filter(e => ids.has(e.nodeId));
+      const ents: TimeEntry[] = [];
+      for (const id of ids) {
+        const nodeEntries = idx.get(id);
+        if (nodeEntries) ents.push(...nodeEntries);
+      }
       const r = reportForBudget(node.budget, totalSeconds(ents, now));
       return {
         node,
@@ -93,11 +110,17 @@ export class DashboardComponent {
   });
 
   readonly entriesByNode = computed(() => {
-    const m = new Map<string, ReturnType<DataService['entries']>>();
+    const m = new Map<string, TimeEntry[]>();
     const childMap = this.childrenByParent();
+    const idx = this.entriesIndex();
     for (const card of this.cards()) {
       const ids = new Set(descendantIds(card.node.id, childMap));
-      m.set(card.node.id, this.data.entries().filter(e => ids.has(e.nodeId)) as any);
+      const cardEntries: TimeEntry[] = [];
+      for (const id of ids) {
+        const nodeEntries = idx.get(id);
+        if (nodeEntries) cardEntries.push(...nodeEntries);
+      }
+      m.set(card.node.id, cardEntries);
     }
     return m;
   });

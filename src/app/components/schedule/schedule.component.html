@@ -109,15 +109,15 @@
 
   <!-- Context menu -->
   <div *ngIf="menu() as m" class="ctx" (click)="closeMenu()" (contextmenu)="$event.preventDefault(); closeMenu()">
-    <ul class="ctx__menu" [style.left.px]="m.x" [style.top.px]="m.y" (click)="$event.stopPropagation()">
+    <ul class="ctx__menu" role="menu" [style.left.px]="m.x" [style.top.px]="m.y" (click)="$event.stopPropagation()">
       <ng-container *ngIf="m.entryId">
-        <li (click)="menuEdit()">Edit…</li>
-        <li (click)="menuCopy()">Copy</li>
-        <li class="ctx__danger" (click)="menuDelete()">Delete</li>
+        <li role="menuitem" tabindex="0" (click)="menuEdit()" (keydown.enter)="menuEdit()" (keydown.space)="$event.preventDefault(); menuEdit()">Edit…</li>
+        <li role="menuitem" tabindex="0" (click)="menuCopy()" (keydown.enter)="menuCopy()" (keydown.space)="$event.preventDefault(); menuCopy()">Copy</li>
+        <li class="ctx__danger" role="menuitem" tabindex="0" (click)="menuDelete()" (keydown.enter)="menuDelete()" (keydown.space)="$event.preventDefault(); menuDelete()">Delete</li>
       </ng-container>
       <ng-container *ngIf="!m.entryId">
-        <li (click)="menuNew()">New entry here…</li>
-        <li (click)="menuPaste()" [class.ctx__disabled]="!clipboard()">Paste</li>
+        <li role="menuitem" tabindex="0" (click)="menuNew()" (keydown.enter)="menuNew()" (keydown.space)="$event.preventDefault(); menuNew()">New entry here…</li>
+        <li role="menuitem" tabindex="0" (click)="menuPaste()" (keydown.enter)="menuPaste()" (keydown.space)="$event.preventDefault(); menuPaste()" [class.ctx__disabled]="!clipboard()" [attr.aria-disabled]="!clipboard()">Paste</li>
       </ng-container>
     </ul>
   </div>

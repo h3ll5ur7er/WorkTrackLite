@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Node, TimeEntry } from '../../data/models';
 import { DataService } from '../../services/data.service';
@@ -46,7 +46,7 @@ interface DragState {
   templateUrl: './schedule.component.html',
   styleUrl: './schedule.component.scss',
 })
-export class ScheduleComponent {
+export class ScheduleComponent implements OnDestroy {
   private data = inject(DataService);
   protected timer = inject(TimerService);
 
@@ -329,6 +329,16 @@ export class ScheduleComponent {
     if (s.previewStart === s.origStart && s.previewEnd === s.origEnd) return;
     await this.data.updateEntry(s.entryId, { start: s.previewStart, end: s.previewEnd });
   };
+
+  ngOnDestroy(): void {
+    window.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('keydown', this.onShiftCheck);
+    window.removeEventListener('keyup', this.onShiftCheck);
+    if (this.dragRaf) cancelAnimationFrame(this.dragRaf);
+    this.dragState = null;
+    this.dragPreview.set(null);
+  }
 
   // ---------- Click / context menu / editing ----------
 
