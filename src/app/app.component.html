@@ -4,10 +4,22 @@
       <span class="app__logo">⏱</span>
       <strong>WorkTrackLite</strong>
     </div>
+
+    <nav class="app__nav app__nav--top" *ngIf="!empty()">
+      <button *ngFor="let v of views"
+              class="app__nav-btn"
+              [class.app__nav-btn--active]="view() === v.id"
+              (click)="setView(v.id)">
+        <span class="app__nav-icon">{{ v.icon }}</span>
+        <span class="app__nav-label">{{ v.label }}</span>
+      </button>
+    </nav>
+
     <div class="app__tools">
       <button class="btn" (click)="openPalette()" title="Command palette (Ctrl/Cmd+K)">⌘K</button>
       <a class="btn" href="worktrack-singlefile.html" download="worktracklite.html"
-         title="Download the entire app as a single HTML file">⬇ Single-file</a>
+         title="Download the entire app as a single HTML file"
+         aria-label="Download the entire app as a single HTML file">⬇</a>
       <button class="btn" (click)="toggleTheme()" title="Toggle theme">
         {{ data.settings().theme === 'dark' ? '☀' : '☾' }}
       </button>
@@ -16,7 +28,19 @@
 
   <ng-container *ngIf="data.ready(); else loading">
     <ng-container *ngIf="!empty(); else first">
-      <main class="app__main">
+
+      <!-- Dashboard view -->
+      <main class="app__main app__main--single" *ngIf="view() === 'dashboard'">
+        <app-dashboard></app-dashboard>
+      </main>
+
+      <!-- Schedule view -->
+      <main class="app__main app__main--single" *ngIf="view() === 'schedule'">
+        <app-schedule></app-schedule>
+      </main>
+
+      <!-- Manage view (the original two-pane editor) -->
+      <main class="app__main" *ngIf="view() === 'manage'">
         <aside class="app__sidebar">
           <div class="app__sidebar-actions">
             <button class="btn btn--primary" (click)="showAddRoot.set(!showAddRoot())">+ New top-level</button>
@@ -32,7 +56,19 @@
           <app-node-detail [node]="tree.selectedNode()" (addedChild)="tree.select($event)"></app-node-detail>
         </section>
       </main>
+
       <app-timer-bar></app-timer-bar>
+
+      <!-- Bottom nav (mobile) -->
+      <nav class="app__nav app__nav--bottom">
+        <button *ngFor="let v of views"
+                class="app__nav-btn"
+                [class.app__nav-btn--active]="view() === v.id"
+                (click)="setView(v.id)">
+          <span class="app__nav-icon">{{ v.icon }}</span>
+          <span class="app__nav-label">{{ v.label }}</span>
+        </button>
+      </nav>
     </ng-container>
 
     <ng-template #first>

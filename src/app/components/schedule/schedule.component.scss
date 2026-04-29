@@ -1,0 +1,232 @@
+:host { display: block; height: 100%; }
+
+.sched {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ----- Sidebar (template tree) ----- */
+.sched__side {
+  border-right: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+.sched__side-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  small { color: var(--c-fg-3); font-size: 0.75rem; }
+}
+.sched__filter {
+  padding: 6px 8px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  color: inherit; font: inherit;
+}
+.tt {
+  list-style: none; margin: 0; padding-left: 0; overflow: auto; min-height: 0;
+  ul { list-style: none; margin: 0; padding-left: 12px; }
+}
+.tt__node {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: grab;
+  user-select: none;
+  &:hover { background: var(--c-bg-2); }
+  &:active { cursor: grabbing; }
+}
+.tt__handle { color: var(--c-fg-3); font-size: 0.7rem; }
+.tt__kind {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-fg-3);
+}
+.tt__name { flex: 1; font-size: 0.9rem; }
+
+/* ----- Main calendar ----- */
+.sched__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.sched__header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border);
+}
+.sched__nav { display: flex; gap: 4px; }
+.sched__week-label { flex: 1; color: var(--c-fg-3); font-size: 0.9rem; }
+.sched__actions { display: flex; gap: 6px; }
+
+.sched__day-row {
+  display: grid;
+  grid-template-columns: 56px repeat(7, 1fr);
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-2);
+  position: sticky; top: 0; z-index: 5;
+}
+.sched__gutter-spacer { border-right: 1px solid var(--c-border); }
+.sched__day-head {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  text-align: center;
+  border-left: 1px solid var(--c-border);
+  color: var(--c-fg-3);
+  &--today { color: var(--c-accent); font-weight: 600; }
+}
+
+.sched__scroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.sched__grid {
+  display: grid;
+  grid-template-columns: 56px repeat(7, 1fr);
+  position: relative;
+}
+.sched__gutter {
+  position: relative;
+  border-right: 1px solid var(--c-border);
+  background: var(--c-bg-2);
+}
+.sched__gutter-cell {
+  height: calc(100% / 24);
+  padding: 2px 6px 0 6px;
+  font-size: 0.7rem;
+  color: var(--c-fg-3);
+  box-sizing: border-box;
+  border-bottom: 1px dashed transparent; /* alignment with hour lines */
+}
+.sched__col {
+  position: relative;
+  border-left: 1px solid var(--c-border);
+  background: var(--c-bg);
+  &--today { background: var(--c-accent-bg); }
+  &--drop { outline: 2px dashed var(--c-accent); outline-offset: -2px; }
+}
+.sched__hour-line {
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+  &:nth-child(odd) { opacity: 0.5; }
+}
+.sched__now {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: var(--c-danger);
+  z-index: 3; pointer-events: none;
+  &::before {
+    content: ''; position: absolute; left: -4px; top: -3px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--c-danger);
+  }
+}
+.sched__ghost {
+  position: absolute; left: 2px; right: 2px;
+  border: 1.5px dashed var(--c-accent);
+  background: var(--c-accent-bg);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ----- Entry block ----- */
+.block {
+  position: absolute;
+  background: var(--c-accent);
+  color: #0b1220;
+  border-radius: 4px;
+  padding: 0;
+  font-size: 0.75rem;
+  cursor: grab;
+  overflow: hidden;
+  z-index: 1;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  display: flex; flex-direction: column;
+  user-select: none;
+  touch-action: none;
+
+  &:active { cursor: grabbing; }
+  &:hover { filter: brightness(1.04); }
+
+  &--running {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &--overlap {
+    border-color: var(--c-danger);
+    box-shadow: 0 0 0 1px var(--c-danger) inset;
+  }
+  &--dragging {
+    z-index: 4;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+}
+.block__inner {
+  flex: 1;
+  padding: 4px 6px;
+  overflow: hidden;
+  pointer-events: none; /* let pointerdown bubble to block */
+}
+.block__title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.block__meta { opacity: 0.85; }
+.block__path { font-size: 0.65rem; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block__handle {
+  position: absolute; left: 0; right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: rgba(0,0,0,0.15);
+  z-index: 2;
+  &--top { top: 0; }
+  &--bottom { bottom: 0; }
+  &:hover { background: rgba(0,0,0,0.35); }
+}
+.block--running .block__handle { display: none; }
+
+/* ----- Context menu (shared with dashboard) ----- */
+.ctx { position: fixed; inset: 0; z-index: 950; }
+.ctx__menu {
+  position: fixed;
+  list-style: none;
+  margin: 0; padding: 4px 0;
+  background: var(--c-bg-2);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  font-size: 0.9rem;
+  z-index: 951;
+
+  li {
+    padding: 6px 12px; cursor: pointer;
+    &:hover { background: var(--c-accent-bg); color: var(--c-accent); }
+    &.ctx__danger:hover { color: var(--c-danger); }
+    &.ctx__disabled { opacity: 0.4; pointer-events: none; }
+  }
+}
+
+/* ----- Mobile ----- */
+@media (max-width: 720px) {
+  .sched { grid-template-columns: 1fr; }
+  .sched__side { display: none; } /* tree drag is desktop only */
+}

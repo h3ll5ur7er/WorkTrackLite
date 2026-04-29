@@ -1,0 +1,69 @@
+<div class="dash">
+  <div class="dash__toolbar">
+    <input class="dash__search" type="search" placeholder="Filter cards…"
+           [value]="query()" (input)="query.set($any($event.target).value)" />
+    <span class="dash__count">{{ cards().length }} card<span *ngIf="cards().length !== 1">s</span></span>
+  </div>
+
+  <div *ngIf="!cards().length" class="dash__empty">
+    <p>No dashboard cards yet.</p>
+    <p class="muted">Leaf nodes appear here automatically — add some children in <strong>Manage</strong>, or enable “Show on dashboard” on any node.</p>
+  </div>
+
+  <div class="dash__grid">
+    <article *ngFor="let c of cards()"
+             class="card"
+             [class.card--running]="c.isRunning"
+             [class.card--over]="c.overBudget"
+             [class.card--soft]="c.softBreached"
+             (click)="onCardClick(c)"
+             (contextmenu)="onCardContext($event, c)">
+      <div class="card__breadcrumb" *ngIf="c.pathLabels.length">
+        <ng-container *ngFor="let p of c.pathLabels; let last = last">
+          <span>{{ p }}</span>
+          <span class="card__sep" *ngIf="!last">›</span>
+        </ng-container>
+      </div>
+      <h3 class="card__title">
+        <span class="card__kind">{{ c.node.kind }}</span>
+        {{ c.node.name }}
+      </h3>
+
+      <div class="card__chart">
+        <app-burndown-chart [entries]="entriesByNode().get(c.node.id) ?? []"
+                            [budget]="c.node.budget"
+                            [now]="timer.now()"></app-burndown-chart>
+      </div>
+
+      <div class="card__metrics">
+        <div class="card__metric">
+          <span class="card__label">Tracked</span>
+          <span class="card__value">{{ formatHMS(c.trackedSeconds) }}</span>
+        </div>
+        <div class="card__metric" *ngIf="c.budgetType === 'fixed'">
+          <span class="card__label">Remaining</span>
+          <span class="card__value"
+                [class.card__value--over]="c.overBudget"
+                [class.card__value--soft]="c.softBreached">{{ formatHMS(c.remainingSeconds) }}</span>
+        </div>
+        <div class="card__metric" *ngIf="c.budgetType === 'per_hour'">
+          <span class="card__label">Target</span>
+          <span class="card__value">{{ formatHMS(c.budgetSeconds) }}</span>
+        </div>
+      </div>
+
+      <div class="card__action">
+        <span *ngIf="c.isRunning" class="card__pulse"></span>
+        <span *ngIf="c.isRunning">Running — click to stop</span>
+        <span *ngIf="!c.isRunning">Click to start timer</span>
+      </div>
+    </article>
+  </div>
+
+  <!-- Context menu -->
+  <div *ngIf="menu() as m" class="ctx" (click)="closeMenu()" (contextmenu)="$event.preventDefault(); closeMenu()">
+    <ul class="ctx__menu" [style.left.px]="m.x" [style.top.px]="m.y" (click)="$event.stopPropagation()">
+      <li (click)="openInManage(m.nodeId)">Open in Manage…</li>
+    </ul>
+  </div>
+</div>

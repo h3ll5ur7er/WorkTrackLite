@@ -1,0 +1,134 @@
+<div class="sched">
+  <!-- Sidebar with draggable tree templates -->
+  <aside class="sched__side">
+    <div class="sched__side-head">
+      <strong>Drag to schedule</strong>
+      <small>Default 1h block</small>
+    </div>
+    <input class="sched__filter" type="search" placeholder="Filter…"
+           [value]="treeFilter()" (input)="treeFilter.set($any($event.target).value)" />
+    <ul class="tt">
+      <ng-container *ngTemplateOutlet="branch; context: { $implicit: treeRoots() }"></ng-container>
+    </ul>
+    <ng-template #branch let-nodes>
+      <li *ngFor="let n of nodes" [hidden]="!isTreeVisible(n.id)">
+        <div class="tt__node"
+             draggable="true"
+             (dragstart)="onTreeDragStart($event, n)"
+             (dragend)="onTreeDragEnd()"
+             [title]="'Drag to schedule a 1h ' + n.kind + ' block'">
+          <span class="tt__handle">⋮⋮</span>
+          <span class="tt__kind">{{ n.kind }}</span>
+          <span class="tt__name">{{ n.name }}</span>
+        </div>
+        <ul *ngIf="childrenOf(n.id).length">
+          <ng-container *ngTemplateOutlet="branch; context: { $implicit: childrenOf(n.id) }"></ng-container>
+        </ul>
+      </li>
+    </ng-template>
+  </aside>
+
+  <!-- Calendar -->
+  <section class="sched__main">
+    <header class="sched__header">
+      <div class="sched__nav">
+        <button class="btn" (click)="prevWeek()" title="Previous week">‹</button>
+        <button class="btn" (click)="thisWeek()">This week</button>
+        <button class="btn" (click)="nextWeek()" title="Next week">›</button>
+      </div>
+      <div class="sched__week-label">
+        {{ days()[0].label }} – {{ days()[6].label }}
+      </div>
+      <div class="sched__actions">
+        <button class="btn btn--primary" (click)="openEditorFor(null)">+ New entry</button>
+      </div>
+    </header>
+
+    <div class="sched__day-row">
+      <div class="sched__gutter-spacer"></div>
+      <div *ngFor="let d of days()" class="sched__day-head" [class.sched__day-head--today]="d.isToday">
+        {{ d.label }}
+      </div>
+    </div>
+
+    <div class="sched__scroll">
+      <div class="sched__grid" #grid [style.height.px]="dayHeightPx()">
+        <!-- Hour gutter -->
+        <div class="sched__gutter">
+          <div *ngFor="let h of hours" class="sched__gutter-cell">{{ h }}:00</div>
+        </div>
+        <!-- Day columns -->
+        <div *ngFor="let d of days(); let dayIdx = index"
+             class="sched__col"
+             [class.sched__col--today]="d.isToday"
+             [class.sched__col--drop]="templateDragNodeId() && templateDragPreview()?.dayIdx === dayIdx"
+             (contextmenu)="onColContext($event, dayIdx)"
+             (dragover)="onColDragOver($event, dayIdx)"
+             (drop)="onColDrop($event, dayIdx)">
+          <!-- Hour grid lines -->
+          <div *ngFor="let h of hours" class="sched__hour-line" [style.top.%]="(h/24)*100"></div>
+
+          <!-- Now indicator -->
+          <div *ngIf="todayDayIdx() === dayIdx" class="sched__now"
+               [style.top.%]="nowPct()"></div>
+
+          <!-- Template drag preview -->
+          <div *ngIf="templateDragPreview() as p"
+               [hidden]="p.dayIdx !== dayIdx"
+               class="sched__ghost"
+               [style.top.%]="p.topPct"
+               [style.height.%]="p.heightPct"></div>
+
+          <!-- Time entry blocks -->
+          <div *ngFor="let b of columns()[dayIdx]"
+               class="block"
+               [class.block--running]="b.entry.end == null"
+               [class.block--overlap]="b.overlap"
+               [class.block--dragging]="dragPreview()?.[b.entry.id]"
+               [style.top.%]="b.topPct"
+               [style.height.%]="b.heightPct"
+               [style.left.%]="(100 / b.laneCount) * b.laneIdx"
+               [style.width.%]="100 / b.laneCount"
+               (pointerdown)="onBlockPointerDown($event, b, 'move')"
+               (click)="onBlockClick($event, b)"
+               (contextmenu)="onBlockContext($event, b)">
+            <div class="block__handle block__handle--top"
+                 (pointerdown)="onBlockPointerDown($event, b, 'resize-start')"></div>
+            <div class="block__inner">
+              <div class="block__title">{{ b.node?.name ?? '(deleted)' }}</div>
+              <div class="block__meta">{{ formatRange(b.entry.start, b.entry.end ?? timer.now()) }}</div>
+              <div class="block__path" *ngIf="b.pathLabel">{{ b.pathLabel }}</div>
+            </div>
+            <div class="block__handle block__handle--bottom"
+                 (pointerdown)="onBlockPointerDown($event, b, 'resize-end')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Context menu -->
+  <div *ngIf="menu() as m" class="ctx" (click)="closeMenu()" (contextmenu)="$event.preventDefault(); closeMenu()">
+    <ul class="ctx__menu" role="menu" [style.left.px]="m.x" [style.top.px]="m.y" (click)="$event.stopPropagation()">
+      <ng-container *ngIf="m.entryId">
+        <li role="menuitem" tabindex="0" (click)="menuEdit()" (keydown.enter)="menuEdit()" (keydown.space)="$event.preventDefault(); menuEdit()">Edit…</li>
+        <li role="menuitem" tabindex="0" (click)="menuCopy()" (keydown.enter)="menuCopy()" (keydown.space)="$event.preventDefault(); menuCopy()">Copy</li>
+        <li class="ctx__danger" role="menuitem" tabindex="0" (click)="menuDelete()" (keydown.enter)="menuDelete()" (keydown.space)="$event.preventDefault(); menuDelete()">Delete</li>
+      </ng-container>
+      <ng-container *ngIf="!m.entryId">
+        <li role="menuitem" tabindex="0" (click)="menuNew()" (keydown.enter)="menuNew()" (keydown.space)="$event.preventDefault(); menuNew()">New entry here…</li>
+        <li role="menuitem" tabindex="0" (click)="menuPaste()" (keydown.enter)="menuPaste()" (keydown.space)="$event.preventDefault(); menuPaste()" [class.ctx__disabled]="!clipboard()" [attr.aria-disabled]="!clipboard()">Paste</li>
+      </ng-container>
+    </ul>
+  </div>
+
+  <!-- Editor modal -->
+  <ng-container *ngIf="editor() as ed">
+    <app-entry-editor
+      [open]="ed.open"
+      [draft]="ed.draft"
+      (save)="onEditorSave($event)"
+      (cancel)="onEditorCancel()"
+      (del)="onEditorDelete($event)"></app-entry-editor>
+  </ng-container>
+</div>

@@ -65,6 +65,17 @@
   </section>
 
   <section class="nd__panel">
+    <h3>Display</h3>
+    <label class="check">
+      <input type="checkbox"
+             [checked]="n.showInDashboard ?? isLeaf()"
+             (change)="toggleShowInDashboard($any($event.target).checked)" />
+      Show this node on the dashboard
+      <small class="muted">Leaf nodes are shown by default; inner nodes are hidden unless explicitly enabled.</small>
+    </label>
+  </section>
+
+  <section class="nd__panel">
     <h3>Add child</h3>
     <div class="row">
       <input placeholder="Name" [ngModel]="newChildName()" (ngModelChange)="newChildName.set($event)" />
