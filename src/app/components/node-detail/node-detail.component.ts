@@ -124,6 +124,11 @@ export class NodeDetailComponent {
     if (!n) return;
     await this.data.updateNode(n.id, { name: name.trim() || n.name });
   }
+  async toggleShowInDashboard(value: boolean) {
+    const n = this.node();
+    if (!n) return;
+    await this.data.updateNode(n.id, { showInDashboard: value });
+  }
   async deleteNode() {
     const n = this.node();
     if (!n) return;

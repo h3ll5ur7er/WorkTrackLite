@@ -43,7 +43,9 @@ export class DataService {
   // --- Nodes ---
 
   async addNode(input: { name: string; kind: string; parentId: string | null; budget?: Budget; notes?: string; tags?: string[] }): Promise<string> {
-    const siblings = await db.nodes.where({ parentId: input.parentId as any }).count();
+    const siblings = input.parentId == null
+      ? await db.nodes.filter(n => n.parentId == null).count()
+      : await db.nodes.where('parentId').equals(input.parentId).count();
     const now = Date.now();
     const node: Node = {
       id: uid(),

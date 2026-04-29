@@ -64,3 +64,11 @@
 
 .muted { color: var(--c-fg-3); }
 .nd__empty { padding: 32px; text-align: center; }
+
+.check {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  small { font-size: 0.75rem; }
+  input { margin-right: 6px; }
+}

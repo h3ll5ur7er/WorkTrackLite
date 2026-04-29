@@ -11,19 +11,51 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 8px 14px;
     border-bottom: 1px solid var(--c-border);
     background: var(--c-bg-2);
   }
-  &__brand { display: flex; gap: 8px; align-items: center; }
+  &__brand { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
   &__logo { font-size: 1.2rem; }
-  &__tools { display: flex; gap: 6px; }
+  &__tools { display: flex; gap: 6px; flex: 0 0 auto; }
+
+  &__nav {
+    display: flex;
+    gap: 4px;
+  }
+  &__nav--top { flex: 1; justify-content: center; }
+  &__nav--bottom { display: none; }
+  &__nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--c-fg-3);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    &:hover { color: var(--c-fg); }
+    &--active {
+      color: var(--c-accent);
+      background: var(--c-accent-bg);
+      border-color: var(--c-accent);
+    }
+  }
+  &__nav-icon { font-size: 1rem; }
 
   &__main {
     flex: 1;
     display: grid;
     grid-template-columns: minmax(220px, 280px) 1fr;
     min-height: 0;
+
+    &--single {
+      display: block;
+      overflow: auto;
+    }
   }
 
   &__sidebar {
@@ -55,6 +87,20 @@
 .row input { flex: 1 1 100px; padding: 4px 6px; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 4px; color: inherit; font: inherit; }
 
 @media (max-width: 720px) {
+  .app__nav--top { display: none; }
+  .app__nav--bottom {
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 4px env(safe-area-inset-bottom, 6px);
+    border-top: 1px solid var(--c-border);
+    background: var(--c-bg-2);
+  }
+  .app__nav--bottom .app__nav-btn {
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 10px;
+    font-size: 0.7rem;
+  }
   .app__main { grid-template-columns: 1fr; }
   .app__sidebar { max-height: 40vh; }
 }

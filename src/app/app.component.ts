@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, AfterViewInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, AfterViewInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DataService } from './services/data.service';
 import { TreeComponent } from './components/tree/tree.component';
@@ -7,6 +7,9 @@ import { NodeDetailComponent } from './components/node-detail/node-detail.compon
 import { TimerBarComponent } from './components/timer-bar/timer-bar.component';
 import { CommandPaletteComponent } from './components/command-palette/command-palette.component';
 import { SetupComponent } from './components/setup/setup.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { ScheduleComponent } from './components/schedule/schedule.component';
+import { AppView } from './data/models';
 
 @Component({
     selector: 'app-root',
@@ -18,6 +21,8 @@ import { SetupComponent } from './components/setup/setup.component';
         TimerBarComponent,
         CommandPaletteComponent,
         SetupComponent,
+        DashboardComponent,
+        ScheduleComponent,
     ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss'
@@ -27,14 +32,39 @@ export class AppComponent implements AfterViewInit {
 
   @ViewChild(TreeComponent) treeRef?: TreeComponent;
   @ViewChild(CommandPaletteComponent) paletteRef?: CommandPaletteComponent;
+  @ViewChild(DashboardComponent) dashboardRef?: DashboardComponent;
 
   readonly empty = computed(() => this.data.nodes().length === 0);
   showAddRoot = signal(false);
   newRootName = signal('');
   newRootKind = signal('');
 
+  readonly view = computed<AppView>(() => this.data.settings().view ?? 'dashboard');
+
+  readonly views: Array<{ id: AppView; label: string; icon: string }> = [
+    { id: 'dashboard', label: 'Dashboard', icon: '▦' },
+    { id: 'schedule', label: 'Schedule',   icon: '🗓' },
+    { id: 'manage',   label: 'Manage',     icon: '⚙' },
+  ];
+
+  constructor() {
+    // Hook the dashboard's "Open in Manage" callback whenever it's mounted
+    effect(() => {
+      if (this.dashboardRef) {
+        this.dashboardRef.openInManageFn = (id) => this.openInManage(id);
+      }
+    });
+  }
+
   ngAfterViewInit(): void {
-    if (this.paletteRef) this.paletteRef.selectNode = (id) => this.treeRef?.select(id);
+    if (this.paletteRef) this.paletteRef.selectNode = (id) => this.openInManage(id);
+  }
+
+  setView(v: AppView) { void this.data.updateSettings({ view: v }); }
+
+  openInManage(nodeId: string) {
+    void this.data.updateSettings({ view: 'manage', lastNodeId: nodeId });
+    queueMicrotask(() => this.treeRef?.select(nodeId));
   }
 
   toggleTheme(): void {

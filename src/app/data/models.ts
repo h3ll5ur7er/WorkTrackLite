@@ -31,9 +31,16 @@ export interface Node {
   order: number;
   budget: Budget;
   archived?: boolean;
+  /**
+   * Override for dashboard visibility. When undefined, leaf nodes (no
+   * children) appear on the dashboard and inner nodes do not.
+   */
+  showInDashboard?: boolean;
   createdAt: number;
   updatedAt: number;
 }
+
+export type AppView = 'dashboard' | 'schedule' | 'manage';
 
 export interface TimeEntry {
   id: string;
@@ -64,4 +71,8 @@ export interface Settings {
   lastNodeId?: string;
   /** Last running timer entry id (for "resume last task"). */
   lastEntryId?: string;
+  /** Currently active top-level view. */
+  view?: AppView;
+  /** First weekday for the schedule (0 = Sunday, 1 = Monday, ...). Defaults to 1. */
+  weekStartsOn?: number;
 }
