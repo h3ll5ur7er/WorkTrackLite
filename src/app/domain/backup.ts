@@ -63,15 +63,16 @@ export function parseBackup(text: string): ParseResult {
   }
 }
 
+/** Lifts older backup formats to the current one. `version` is the file's declared format version. */
 function migrateBackup(raw: Record<string, unknown>, version: number, warnings: string[]): BackupData {
   const nodes = arrayOf(raw, 'nodes').map(toNode);
   const entries = arrayOf(raw, 'entries').map(toEntry);
   const templates = raw['templates'] === undefined ? [] : arrayOf(raw, 'templates').map(toTemplate);
   const settings = toSettings(raw['settings']);
-  if (version < 2) {
-    // v1 → v2: `per_hour` became `target`; at most one running entry.
-    for (const n of nodes) if ((n.budget.type as string) === 'per_hour') n.budget.type = 'target';
-  }
+  // v1 → v2: `per_hour` became `target` (applied regardless of the declared version, so
+  // hand-edited files cannot smuggle the legacy value into the database).
+  for (const n of nodes) if ((n.budget.type as string) === 'per_hour') n.budget.type = 'target';
+  // Invariant: at most one running entry.
   const fixed = closeAllButNewest(entries.filter((e) => e.end == null));
   if (fixed.length) {
     const byId = new Map(fixed.map((e) => [e.id, e] as const));

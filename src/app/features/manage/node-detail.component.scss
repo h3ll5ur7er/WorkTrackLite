@@ -164,15 +164,17 @@
 }
 
 .check {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: center;
   font-size: 0.9rem;
   cursor: pointer;
-  small {
-    font-size: 0.75rem;
-  }
   input {
-    margin-right: 6px;
+    margin: 0;
+  }
+  small {
+    grid-column: 2;
+    font-size: 0.75rem;
   }
 }

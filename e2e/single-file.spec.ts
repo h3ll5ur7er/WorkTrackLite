@@ -1,8 +1,22 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from './fixtures';
 
-const singleFileUrl = pathToFileURL(path.resolve(__dirname, '..', 'dist', 'worktrack-singlefile.html')).href;
+const singleFilePath = path.resolve(__dirname, '..', 'dist', 'worktrack-singlefile.html');
+const singleFileUrl = pathToFileURL(singleFilePath).href;
+
+test('regression: inlined bundles stay ES modules and there is no <base> tag', () => {
+  // As classic scripts, several minified bundles share one global scope and clobber
+  // each other (the original blank-page bug). A <base> breaks hash routing on file://.
+  const html = fs.readFileSync(singleFilePath, 'utf8');
+  // Large scripts are the inlined bundles (Angular also adds a tiny inline CSS-loader script).
+  const bundles = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => m[2].length > 10_000);
+  expect(bundles.length).toBeGreaterThan(0);
+  for (const [, attrs] of bundles) expect(attrs).toContain('type="module"');
+  expect(html).not.toMatch(/<base\s[^>]*href/i);
+  expect(html).not.toMatch(/<script[^>]+src=/);
+});
 
 test('regression: the single-file build works when opened from disk (file://)', async ({ page }) => {
   await page.goto(singleFileUrl);

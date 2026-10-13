@@ -29,6 +29,11 @@ import { ToastService } from '../../core/toast.service';
       width: min(480px, calc(100vw - 24px));
       pointer-events: none;
     }
+    @media (max-width: 720px) {
+      .toasts {
+        bottom: 132px; /* above the timer bar and the bottom navigation */
+      }
+    }
     .toast {
       pointer-events: auto;
       display: flex;

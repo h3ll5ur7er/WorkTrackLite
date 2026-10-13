@@ -25,7 +25,6 @@ import {
   atWallClockMinutes,
   daysFrom,
   isSameDay,
-  startOfDay,
   startOfWeek,
   wallClockMinutes,
 } from '../../domain/time';
@@ -452,7 +451,4 @@ export class ScheduleComponent {
   protected isPreviewing(seg: DaySegment): boolean {
     return this.preview()?.id === seg.entry.id;
   }
-
-  /** Day start used by the "now" line (exposed for the template). */
-  protected readonly todayStart = computed(() => startOfDay(this.timer.minute()));
 }

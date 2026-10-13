@@ -3,13 +3,8 @@
   "compilerOptions": {
     "noEmit": true,
     "module": "ESNext",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "rootDir": ".."
   },
-  "include": [
-    "./**/*.ts",
-    "../playwright.config.ts"
-  ]
+  "include": ["./**/*.ts", "../playwright.config.ts"]
 }

@@ -73,6 +73,11 @@ describe('backup', () => {
     expect(res.warnings.length).toBe(1);
   });
 
+  it('never lets the legacy per_hour type through, whatever the declared version', () => {
+    const res = parse({ ...valid(), nodes: [makeNode({ id: 'a', budget: { type: 'per_hour' as never, seconds: 1 } })], entries: [] });
+    expect(res.ok && res.data.nodes[0].budget.type).toBe('target');
+  });
+
   it('names files by local date', () => {
     expect(backupFileName(new Date(2026, 9, 3, 23, 59).getTime())).toBe('worktracklite-backup-2026-10-03.json');
   });
