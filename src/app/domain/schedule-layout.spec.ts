@@ -10,7 +10,11 @@ describe('layoutWeek', () => {
   const days = daysFrom(local(2026, 10, 19), 7); // week with the 25h Sunday (Europe/Zurich)
 
   it('places an entry by wall-clock minutes', () => {
-    const cols = layoutWeek([makeEntry({ id: 'a', nodeId: 'n', start: local(2026, 10, 20, 9), end: local(2026, 10, 20, 10, 30) })], days, end);
+    const cols = layoutWeek(
+      [makeEntry({ id: 'a', nodeId: 'n', start: local(2026, 10, 20, 9), end: local(2026, 10, 20, 10, 30) })],
+      days,
+      end,
+    );
     expect(cols[1]).toHaveLength(1);
     expect(cols[1][0]).toMatchObject({ topMin: 540, heightMin: 90, lane: 0, laneCount: 1, overlap: false });
   });

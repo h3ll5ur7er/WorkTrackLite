@@ -29,7 +29,7 @@ import {
   startOfWeek,
   wallClockMinutes,
 } from '../../domain/time';
-import { LongPressDirective, LongPressEvent } from '../../shared/long-press.directive';
+import { LongPressDirective, LongPressEvent, swallowNextClick } from '../../shared/long-press.directive';
 import { ContextMenuComponent, MenuItem } from '../../shared/ui/context-menu.component';
 import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
 
@@ -216,7 +216,7 @@ export class ScheduleComponent {
               const entry = this.drag?.entry;
               const { startX, startY } = this.drag ?? { startX: 0, startY: 0 };
               this.endDrag();
-              this.suppressClick = true;
+              swallowNextClick();
               if (entry) this.menu.set({ x: startX, y: startY, entry });
             }, LONG_PRESS_MS),
     };

@@ -5,7 +5,10 @@ import { BACKUP_FORMAT_VERSION, backupFileName, createBackup, parseBackup } from
 const valid = () =>
   createBackup(
     {
-      nodes: [makeNode({ id: 'a', budget: { type: 'fixed', seconds: 3600, softLimit: 1800 } }), makeNode({ id: 'b', parentId: 'a', tags: ['x'] })],
+      nodes: [
+        makeNode({ id: 'a', budget: { type: 'fixed', seconds: 3600, softLimit: 1800 } }),
+        makeNode({ id: 'b', parentId: 'a', tags: ['x'] }),
+      ],
       entries: [makeEntry({ id: 'e', nodeId: 'b', start: 0, end: 1000, note: 'n', tags: ['t'] })],
       templates: [{ id: 'dev', name: 'Dev', levels: ['A', 'B'] }],
       settings: { ...DEFAULT_SETTINGS, theme: 'light', weekStartsOn: 0, lastNodeId: 'b' },
@@ -41,7 +44,9 @@ describe('backup', () => {
     const b = valid();
     expect(parse({ ...b, entries: [makeEntry({ id: 'e', nodeId: 'zzz', start: 0 })] }).ok).toBe(false);
     expect(parse({ ...b, nodes: [makeNode({ id: 'a', parentId: 'zzz' })], entries: [] }).ok).toBe(false);
-    expect(parse({ ...b, nodes: [makeNode({ id: 'a', parentId: 'b' }), makeNode({ id: 'b', parentId: 'a' })], entries: [] }).ok).toBe(false);
+    expect(parse({ ...b, nodes: [makeNode({ id: 'a', parentId: 'b' }), makeNode({ id: 'b', parentId: 'a' })], entries: [] }).ok).toBe(
+      false,
+    );
     expect(parse({ ...b, nodes: [makeNode({ id: 'a' }), makeNode({ id: 'a' })], entries: [] }).ok).toBe(false);
     expect(parse({ ...b, entries: [makeEntry({ id: 'e', nodeId: 'a', start: 10, end: 5 })] }).ok).toBe(false);
   });

@@ -18,7 +18,6 @@ export interface LongPressEvent {
     '(pointermove)': 'onMove($event)',
     '(pointerup)': 'cancel()',
     '(pointercancel)': 'cancel()',
-    '(click)': 'onClick($event)',
   },
 })
 export class LongPressDirective {
@@ -28,18 +27,15 @@ export class LongPressDirective {
   private readonly el = inject(ElementRef<HTMLElement>);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private origin: { x: number; y: number } | null = null;
-  /** Swallow the click that follows a recognised long press. */
-  private fired = false;
 
   protected onDown(ev: PointerEvent): void {
     if (ev.pointerType === 'mouse') return;
     this.cancel();
-    this.fired = false;
     this.origin = { x: ev.clientX, y: ev.clientY };
     const target = ev.target;
     this.timer = setTimeout(() => {
       this.timer = null;
-      this.fired = true;
+      swallowNextClick();
       this.appLongPress.emit({ x: this.origin!.x, y: this.origin!.y, target: target ?? this.el.nativeElement });
     }, this.longPressDelay());
   }
@@ -48,16 +44,26 @@ export class LongPressDirective {
     if (this.origin && Math.hypot(ev.clientX - this.origin.x, ev.clientY - this.origin.y) > 10) this.cancel();
   }
 
-  protected onClick(ev: MouseEvent): void {
-    if (this.fired) {
-      ev.stopPropagation();
-      ev.preventDefault();
-      this.fired = false;
-    }
-  }
-
   cancel(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
   }
+}
+
+/**
+ * Lifting the finger after a long press produces a click — on whatever is now
+ * under it (often the backdrop of the menu that just opened). Swallow it once.
+ */
+export function swallowNextClick(windowMs = 800): void {
+  const handler = (ev: Event) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+    done();
+  };
+  const done = () => {
+    window.removeEventListener('click', handler, true);
+    clearTimeout(timer);
+  };
+  const timer = setTimeout(done, windowMs);
+  window.addEventListener('click', handler, true);
 }

@@ -10,6 +10,8 @@ import { TimeEntry } from './models';
 export interface TimerChange {
   started: TimeEntry | null;
   closed: TimeEntry[];
+  /** `settings.lastNodeId` before a start changed it (restored by undo). */
+  previousLastNodeId?: string;
 }
 
 const NO_CHANGE: TimerChange = { started: null, closed: [] };
@@ -74,6 +76,7 @@ export class TimerService {
       if (change.started) await this.db.entries.delete(change.started.id);
       if (change.closed.length) await this.db.entries.bulkPut(change.closed);
     });
+    if (change.started) await this.data.updateSettings({ lastNodeId: change.previousLastNodeId });
   }
 
   private async startInTx(nodeId: string, note?: string): Promise<TimerChange> {
@@ -91,8 +94,10 @@ export class TimerService {
   }
 
   private async afterStart(change: TimerChange): Promise<TimerChange> {
-    if (change.started) await this.data.updateSettings({ lastNodeId: change.started.nodeId });
-    return change;
+    if (!change.started) return change;
+    const previousLastNodeId = (await this.db.settings.get('app'))?.lastNodeId;
+    await this.data.updateSettings({ lastNodeId: change.started.nodeId });
+    return { ...change, previousLastNodeId };
   }
 
   private openEntries(): Promise<TimeEntry[]> {

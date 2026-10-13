@@ -1,4 +1,14 @@
-import { addDays, atWallClockMinutes, daysFrom, fromLocalInput, isSameDay, startOfDay, startOfWeek, toLocalInput, wallClockMinutes } from './time';
+import {
+  addDays,
+  atWallClockMinutes,
+  daysFrom,
+  fromLocalInput,
+  isSameDay,
+  startOfDay,
+  startOfWeek,
+  toLocalInput,
+  wallClockMinutes,
+} from './time';
 
 // test-setup.ts pins TZ=Europe/Zurich: DST ends Sun 2026-10-25, starts Sun 2026-03-29.
 const local = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min).getTime();
