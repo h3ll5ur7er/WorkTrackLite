@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   ElementRef,
@@ -11,6 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { renderNow } from '../../shared/render-now';
 import { DataService } from '../../core/data.service';
 import { Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
@@ -63,6 +65,7 @@ type MenuState = { x: number; y: number } & ({ entry: TimeEntry } | { dayStart: 
 })
 export class ScheduleComponent {
   private readonly data = inject(DataService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly timer = inject(TimerService);
   private readonly toast = inject(ToastService);
 
@@ -218,7 +221,7 @@ export class ScheduleComponent {
               const { startX, startY } = this.drag ?? { startX: 0, startY: 0 };
               this.endDrag();
               swallowNextClick();
-              if (entry) this.menu.set({ x: startX, y: startY, entry });
+              if (entry) this.openMenu({ x: startX, y: startY, entry });
             }, LONG_PRESS_MS),
     };
     target.setPointerCapture?.(ev.pointerId);
@@ -319,7 +322,7 @@ export class ScheduleComponent {
       this.activate(seg.entry, r.left, r.top);
     } else if (ev.key === 'ContextMenu' || (ev.shiftKey && ev.key === 'F10')) {
       ev.preventDefault();
-      this.menu.set({ x: r.left, y: r.top, entry: seg.entry });
+      this.openMenu({ x: r.left, y: r.top, entry: seg.entry });
     } else if (ev.key === 'Delete' || ev.key === 'Backspace') {
       ev.preventDefault();
       if (seg.entry.end != null) void this.deleteEntry(seg.entry.id);
@@ -327,26 +330,26 @@ export class ScheduleComponent {
   }
 
   private activate(entry: TimeEntry, x: number, y: number): void {
-    if (entry.end == null) this.menu.set({ x, y, entry });
+    if (entry.end == null) this.openMenu({ x, y, entry });
     else this.openEditor(entry);
   }
 
   protected onBlockContext(ev: MouseEvent, seg: DaySegment): void {
     ev.preventDefault();
     ev.stopPropagation();
-    this.menu.set({ x: ev.clientX, y: ev.clientY, entry: seg.entry });
+    this.openMenu({ x: ev.clientX, y: ev.clientY, entry: seg.entry });
   }
 
   // --- Column interaction -------------------------------------------------------------
 
   protected onColContext(ev: MouseEvent, dayStart: number): void {
     ev.preventDefault();
-    this.menu.set({ x: ev.clientX, y: ev.clientY, dayStart, minutes: this.minutesAt(ev.clientY, ev.currentTarget as HTMLElement) });
+    this.openMenu({ x: ev.clientX, y: ev.clientY, dayStart, minutes: this.minutesAt(ev.clientY, ev.currentTarget as HTMLElement) });
   }
 
   protected onColLongPress(ev: LongPressEvent, dayStart: number, col: HTMLElement): void {
     if ((ev.target as HTMLElement | null)?.closest?.('.block')) return;
-    this.menu.set({ x: ev.x, y: ev.y, dayStart, minutes: this.minutesAt(ev.y, col) });
+    this.openMenu({ x: ev.x, y: ev.y, dayStart, minutes: this.minutesAt(ev.y, col) });
   }
 
   protected menuItems(m: MenuState): MenuItem[] {
@@ -388,7 +391,7 @@ export class ScheduleComponent {
 
   protected openEditor(entry: TimeEntry | null, start?: number): void {
     if (entry) {
-      this.editor.set({
+      this.showEditor({
         id: entry.id,
         nodeId: entry.nodeId,
         start: entry.start,
@@ -398,7 +401,7 @@ export class ScheduleComponent {
       });
     } else {
       const s = start ?? snapToGrid(Date.now(), SNAP_MIN);
-      this.editor.set({ nodeId: null, start: s, end: s + MS_PER_HOUR, note: '' });
+      this.showEditor({ nodeId: null, start: s, end: s + MS_PER_HOUR, note: '' });
     }
   }
 
@@ -452,5 +455,17 @@ export class ScheduleComponent {
 
   protected isPreviewing(seg: DaySegment): boolean {
     return this.preview()?.id === seg.entry.id;
+  }
+
+  /** Opens a menu and renders it now, so it has focus before the next keystroke. */
+  private openMenu(m: MenuState): void {
+    this.menu.set(m);
+    renderNow(this.cdr);
+  }
+
+  /** Opens the entry editor and renders it now, so it has focus before the next keystroke. */
+  private showEditor(draft: EntryDraft): void {
+    this.editor.set(draft);
+    renderNow(this.cdr);
   }
 }

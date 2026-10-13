@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, inject, input, output } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input, output } from '@angular/core';
 
 export interface MenuItem {
   label: string;
@@ -42,7 +42,7 @@ export interface MenuItem {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ContextMenuComponent {
+export class ContextMenuComponent implements AfterViewInit {
   readonly x = input.required<number>();
   readonly y = input.required<number>();
   readonly items = input.required<MenuItem[]>();
@@ -52,16 +52,21 @@ export class ContextMenuComponent {
   private readonly host = inject(ElementRef<HTMLElement>);
 
   constructor() {
-    // Return focus to whatever opened the menu once it closes.
+    // Return focus to whatever opened the menu once it closes, unless the chosen
+    // action already moved focus somewhere else (e.g. into a dialog it opened).
     const opener = document.activeElement as HTMLElement | null;
-    afterNextRender(() =>
-      this.buttons()
-        .find((b) => !b.disabled)
-        ?.focus(),
-    );
     inject(DestroyRef).onDestroy(() => {
-      if (opener?.isConnected) opener.focus();
+      const active = document.activeElement;
+      const focusLost = !active || active === document.body || (this.host.nativeElement as HTMLElement).contains(active);
+      if (focusLost && opener?.isConnected) opener.focus();
     });
+  }
+
+  /** Focus as soon as the view exists; openers render synchronously (see `renderNow`). */
+  ngAfterViewInit(): void {
+    this.buttons()
+      .find((b) => !b.disabled)
+      ?.focus();
   }
 
   protected clampedX(): number {

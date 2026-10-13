@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { renderNow } from '../../shared/render-now';
 import { DataService } from '../../core/data.service';
 import { Node, TimeEntry } from '../../core/models';
 import { TimerChange, TimerService } from '../../core/timer.service';
@@ -41,6 +42,7 @@ const REPEAT_GUARD_MS = 400;
 })
 export class DashboardComponent {
   private readonly data = inject(DataService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly timer = inject(TimerService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -115,16 +117,16 @@ export class DashboardComponent {
 
   protected onContextMenu(ev: MouseEvent, card: DashboardCard): void {
     ev.preventDefault();
-    this.menu.set({ x: ev.clientX, y: ev.clientY, card });
+    this.openMenu({ x: ev.clientX, y: ev.clientY, card });
   }
 
   protected onLongPress(ev: LongPressEvent, card: DashboardCard): void {
-    this.menu.set({ x: ev.x, y: ev.y, card });
+    this.openMenu({ x: ev.x, y: ev.y, card });
   }
 
   protected openMenuFrom(button: HTMLElement, card: DashboardCard): void {
     const r = button.getBoundingClientRect();
-    this.menu.set({ x: r.left, y: r.bottom + 4, card });
+    this.openMenu({ x: r.left, y: r.bottom + 4, card });
   }
 
   protected menuItems(card: DashboardCard): MenuItem[] {
@@ -149,7 +151,7 @@ export class DashboardComponent {
 
   private openEditor(nodeId: string): void {
     const end = Math.floor(Date.now() / 900_000) * 900_000;
-    this.editor.set({ nodeId, start: end - MS_PER_HOUR, end, note: '' });
+    this.showEditor({ nodeId, start: end - MS_PER_HOUR, end, note: '' });
   }
 
   protected async saveEntry(draft: EntryDraft): Promise<void> {
@@ -165,5 +167,17 @@ export class DashboardComponent {
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  /** Opens a menu and renders it now, so it has focus before the next keystroke. */
+  private openMenu(m: { x: number; y: number; card: DashboardCard }): void {
+    this.menu.set(m);
+    renderNow(this.cdr);
+  }
+
+  /** Opens the entry editor and renders it now, so it has focus before the next keystroke. */
+  private showEditor(draft: EntryDraft): void {
+    this.editor.set(draft);
+    renderNow(this.cdr);
   }
 }

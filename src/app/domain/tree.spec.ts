@@ -1,5 +1,5 @@
 import { makeEntry, makeNode } from '../testing/test-db';
-import { TreeIndex, closedSubtreeSeconds, entriesByNode, liveSubtreeSeconds } from './tree';
+import { TreeIndex, closedSubtreeSeconds, entriesByNode, liveSubtreeSeconds, reorderSiblings } from './tree';
 
 const H = 3_600_000;
 
@@ -93,5 +93,33 @@ describe('aggregation', () => {
   it('entriesByNode groups by node', () => {
     const m = entriesByNode([makeEntry({ id: '1', nodeId: 'a', start: 0 }), makeEntry({ id: '2', nodeId: 'a', start: 1 })]);
     expect(m.get('a')?.length).toBe(2);
+  });
+});
+
+describe('reorderSiblings', () => {
+  const sibs = (...ids: string[]) =>
+    ids.map((id, order) => makeNode({ id: id.replace('*', ''), order, archived: id.endsWith('*') || undefined }));
+  const ids = (nodes: { id: string }[] | null) => nodes?.map((n) => n.id) ?? null;
+
+  it('swaps with the adjacent sibling', () => {
+    expect(ids(reorderSiblings(sibs('a', 'b', 'c'), 'b', -1))).toEqual(['b', 'a', 'c']);
+    expect(ids(reorderSiblings(sibs('a', 'b', 'c'), 'b', 1))).toEqual(['a', 'c', 'b']);
+  });
+
+  it('returns null at either end', () => {
+    expect(reorderSiblings(sibs('a', 'b'), 'a', -1)).toBeNull();
+    expect(reorderSiblings(sibs('a', 'b'), 'b', 1)).toBeNull();
+  });
+
+  it('regression: skips hidden archived siblings so the visible order always changes', () => {
+    // Visible order is a, c. Moving c up must put it before a, not just before the hidden b.
+    expect(ids(reorderSiblings(sibs('a', 'b*', 'c'), 'c', -1))).toEqual(['c', 'a', 'b']);
+    expect(ids(reorderSiblings(sibs('a', 'b*', 'c'), 'a', 1))).toEqual(['b', 'c', 'a']);
+    // Only archived siblings in that direction: nothing visible to pass, so no move.
+    expect(reorderSiblings(sibs('a*', 'b'), 'b', -1)).toBeNull();
+  });
+
+  it('an archived node (shown via "Show archived") moves past any sibling', () => {
+    expect(ids(reorderSiblings(sibs('a', 'b*'), 'b', -1))).toEqual(['b', 'a']);
   });
 });
