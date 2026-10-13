@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  Component,
+  computed,
+  input,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Budget, TimeEntry } from '../../data/models';
 import { entryDurationSeconds } from '../../services/budget';
 
@@ -58,6 +63,7 @@ import { entryDurationSeconds } from '../../services/budget';
       }
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

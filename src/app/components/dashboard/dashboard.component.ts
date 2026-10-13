@@ -1,4 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Node, TimeEntry } from '../../data/models';
 import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
@@ -27,6 +33,7 @@ interface DashboardCard {
   selector: 'app-dashboard',
   imports: [BurndownChartComponent],
   templateUrl: './dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent {

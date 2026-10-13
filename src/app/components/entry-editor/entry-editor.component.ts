@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   signal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Node, TimeEntry } from '../../data/models';
@@ -110,6 +111,7 @@ export interface EntryDraft {
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .modal {

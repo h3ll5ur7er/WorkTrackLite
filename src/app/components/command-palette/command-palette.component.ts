@@ -7,6 +7,7 @@ import {
   ElementRef,
   viewChild,
   AfterViewInit,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
@@ -53,6 +54,7 @@ interface Action {
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .cp {

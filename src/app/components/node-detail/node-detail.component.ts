@@ -1,17 +1,31 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Budget, BudgetType, Node, TimeEntry } from '../../data/models';
 import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
-import { descendantIds, indexChildren, reportForBudget, totalSeconds } from '../../services/budget';
+import {
+  descendantIds,
+  indexChildren,
+  reportForBudget,
+  totalSeconds,
+} from '../../services/budget';
 import { entriesToCsv } from '../../services/csv';
 
 @Component({
-    selector: 'app-node-detail',
-    imports: [CommonModule, FormsModule],
-    templateUrl: './node-detail.component.html',
-    styleUrl: './node-detail.component.scss'
+  selector: 'app-node-detail',
+  imports: [CommonModule, FormsModule],
+  templateUrl: './node-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './node-detail.component.scss',
 })
 export class NodeDetailComponent {
   private data = inject(DataService);
@@ -34,17 +48,20 @@ export class NodeDetailComponent {
     const n = this.node();
     if (!n) return '';
     const tplId = this.data.settings().templateId;
-    const tpl = this.data.templates().find(t => t.id === tplId);
+    const tpl = this.data.templates().find((t) => t.id === tplId);
     if (!tpl) return 'Item';
     const idx = tpl.levels.indexOf(n.kind);
-    return idx >= 0 && idx + 1 < tpl.levels.length ? tpl.levels[idx + 1] : 'Item';
+    return idx >= 0 && idx + 1 < tpl.levels.length
+      ? tpl.levels[idx + 1]
+      : 'Item';
   });
 
   readonly entriesForNode = computed(() => {
     const n = this.node();
     if (!n) return [] as TimeEntry[];
-    return this.data.entries()
-      .filter(e => e.nodeId === n.id)
+    return this.data
+      .entries()
+      .filter((e) => e.nodeId === n.id)
       .sort((a, b) => b.start - a.start);
   });
 
@@ -52,26 +69,32 @@ export class NodeDetailComponent {
     const n = this.node();
     if (!n) return [] as TimeEntry[];
     const ids = new Set(descendantIds(n.id, indexChildren(this.data.nodes())));
-    return this.data.entries().filter(e => ids.has(e.nodeId));
+    return this.data.entries().filter((e) => ids.has(e.nodeId));
   });
 
   /** True when the node has no children (leaf node). */
   readonly isLeaf = computed(() => {
     const n = this.node();
     if (!n) return false;
-    return !this.data.nodes().some(x => x.parentId === n.id);
+    return !this.data.nodes().some((x) => x.parentId === n.id);
   });
 
   readonly nodeReport = computed(() => {
     const n = this.node();
     if (!n) return null;
-    return reportForBudget(n.budget, totalSeconds(this.entriesForNode(), this.timer.now()));
+    return reportForBudget(
+      n.budget,
+      totalSeconds(this.entriesForNode(), this.timer.now()),
+    );
   });
 
   readonly subtreeReport = computed(() => {
     const n = this.node();
     if (!n) return null;
-    return reportForBudget(n.budget, totalSeconds(this.subtreeEntries(), this.timer.now()));
+    return reportForBudget(
+      n.budget,
+      totalSeconds(this.subtreeEntries(), this.timer.now()),
+    );
   });
 
   readonly isRunningHere = computed(() => {
@@ -93,14 +116,17 @@ export class NodeDetailComponent {
     const n = this.node();
     if (n) await this.timer.start(n.id);
   }
-  async stopTimer() { await this.timer.stop(); }
+  async stopTimer() {
+    await this.timer.stop();
+  }
 
   async addChild() {
     const n = this.node();
     if (!n) return;
     const name = this.newChildName().trim();
     if (!name) return;
-    const kind = this.newChildKind().trim() || this.suggestedChildKind() || 'Item';
+    const kind =
+      this.newChildKind().trim() || this.suggestedChildKind() || 'Item';
     const id = await this.data.addNode({ parentId: n.id, name, kind });
     this.newChildName.set('');
     this.newChildKind.set('');
@@ -164,12 +190,16 @@ export class NodeDetailComponent {
   }
 
   exportCsv(scope: 'node' | 'subtree') {
-    const entries = scope === 'node' ? this.entriesForNode() : this.subtreeEntries();
+    const entries =
+      scope === 'node' ? this.entriesForNode() : this.subtreeEntries();
     const csv = entriesToCsv(entries, this.data.nodes(), this.timer.now());
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const safeName = (this.node()?.name ?? 'export').replace(/[^a-z0-9_-]+/gi, '_');
+    const safeName = (this.node()?.name ?? 'export').replace(
+      /[^a-z0-9_-]+/gi,
+      '_',
+    );
     a.href = url;
     a.download = `worktracklite_${safeName}_${scope}.csv`;
     document.body.appendChild(a);

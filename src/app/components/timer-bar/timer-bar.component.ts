@@ -1,4 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
 
@@ -28,6 +33,7 @@ import { TimerService } from '../../services/timer.service';
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .bar {

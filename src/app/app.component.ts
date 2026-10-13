@@ -7,6 +7,7 @@ import {
   computed,
   inject,
   signal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DataService } from './services/data.service';
@@ -32,6 +33,7 @@ import { AppView } from './data/models';
     ScheduleComponent,
   ],
   templateUrl: './app.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './app.component.scss',
 })
 export class AppComponent implements AfterViewInit {

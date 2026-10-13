@@ -1,11 +1,24 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Node, TimeEntry } from '../../data/models';
 import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
 import { indexChildren } from '../../services/budget';
-import { EntryEditorComponent, EntryDraft } from '../entry-editor/entry-editor.component';
+import {
+  EntryEditorComponent,
+  EntryDraft,
+} from '../entry-editor/entry-editor.component';
 
 const MS_PER_MIN = 60_000;
 const MS_PER_HOUR = 3_600_000;
@@ -17,9 +30,9 @@ interface RenderedBlock {
   entry: TimeEntry;
   node: Node | null;
   pathLabel: string;
-  topPct: number;     // 0..100 (relative to one day)
-  heightPct: number;  // 0..100
-  laneIdx: number;    // for overlap handling
+  topPct: number; // 0..100 (relative to one day)
+  heightPct: number; // 0..100
+  laneIdx: number; // for overlap handling
   laneCount: number;
   overlap: boolean;
 }
@@ -44,6 +57,7 @@ interface DragState {
   selector: 'app-schedule',
   imports: [CommonModule, FormsModule, EntryEditorComponent],
   templateUrl: './schedule.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './schedule.component.scss',
 })
 export class ScheduleComponent implements OnDestroy {
@@ -61,16 +75,29 @@ export class ScheduleComponent implements OnDestroy {
   private dragState: DragState | null = null;
   private dragRaf = 0;
   /** Live preview render: entryId → {start,end} while a drag is happening. */
-  readonly dragPreview = signal<Record<string, { start: number; end: number }> | null>(null);
+  readonly dragPreview = signal<Record<
+    string,
+    { start: number; end: number }
+  > | null>(null);
 
   // --- Tree-template drag state ---
   /** Node id currently being dragged from the tree (or null). */
   readonly templateDragNodeId = signal<string | null>(null);
   /** Live ghost preview while dragging a template into the grid. */
-  readonly templateDragPreview = signal<{ dayIdx: number; topPct: number; heightPct: number } | null>(null);
+  readonly templateDragPreview = signal<{
+    dayIdx: number;
+    topPct: number;
+    heightPct: number;
+  } | null>(null);
 
   // --- Context menu + clipboard ---
-  readonly menu = signal<{ x: number; y: number; entryId?: string; dayIdx?: number; minutes?: number } | null>(null);
+  readonly menu = signal<{
+    x: number;
+    y: number;
+    entryId?: string;
+    dayIdx?: number;
+    minutes?: number;
+  } | null>(null);
   readonly clipboard = signal<TimeEntry | null>(null);
 
   // --- Editor modal ---
@@ -88,7 +115,10 @@ export class ScheduleComponent implements OnDestroy {
 
   // ---------- Week navigation ----------
 
-  startOfWeek(ms: number, weekStartsOn: number = this.data.settings().weekStartsOn ?? 1): number {
+  startOfWeek(
+    ms: number,
+    weekStartsOn: number = this.data.settings().weekStartsOn ?? 1,
+  ): number {
     const d = new Date(ms);
     d.setHours(0, 0, 0, 0);
     const day = d.getDay();
@@ -97,9 +127,15 @@ export class ScheduleComponent implements OnDestroy {
     return d.getTime();
   }
 
-  prevWeek() { this.weekStart.set(this.weekStart() - 7 * MS_PER_DAY); }
-  nextWeek() { this.weekStart.set(this.weekStart() + 7 * MS_PER_DAY); }
-  thisWeek() { this.weekStart.set(this.startOfWeek(Date.now())); }
+  prevWeek() {
+    this.weekStart.set(this.weekStart() - 7 * MS_PER_DAY);
+  }
+  nextWeek() {
+    this.weekStart.set(this.weekStart() + 7 * MS_PER_DAY);
+  }
+  thisWeek() {
+    this.weekStart.set(this.startOfWeek(Date.now()));
+  }
 
   readonly days = computed(() => {
     const start = this.weekStart();
@@ -107,7 +143,11 @@ export class ScheduleComponent implements OnDestroy {
       const ms = start + i * MS_PER_DAY;
       return {
         ms,
-        label: new Date(ms).toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }),
+        label: new Date(ms).toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'numeric',
+          day: 'numeric',
+        }),
         isToday: this.isSameDay(ms, Date.now()),
       };
     });
@@ -116,8 +156,13 @@ export class ScheduleComponent implements OnDestroy {
   readonly hours = Array.from({ length: 24 }, (_, i) => i);
 
   isSameDay(a: number, b: number) {
-    const da = new Date(a), db = new Date(b);
-    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+    const da = new Date(a),
+      db = new Date(b);
+    return (
+      da.getFullYear() === db.getFullYear() &&
+      da.getMonth() === db.getMonth() &&
+      da.getDate() === db.getDate()
+    );
   }
 
   // ---------- Layout ----------
@@ -126,14 +171,19 @@ export class ScheduleComponent implements OnDestroy {
    * Splits an entry that crosses midnight into per-day segments. Each segment
    * is keyed by `dayIdx` (0..6) and clamped to that day's [0, MS_PER_DAY).
    */
-  private segmentsForEntry(entry: TimeEntry, end: number, weekStart: number): Array<{ dayIdx: number; from: number; to: number }> {
+  private segmentsForEntry(
+    entry: TimeEntry,
+    end: number,
+    weekStart: number,
+  ): Array<{ dayIdx: number; from: number; to: number }> {
     const segs: Array<{ dayIdx: number; from: number; to: number }> = [];
     for (let i = 0; i < 7; i++) {
       const dayStart = weekStart + i * MS_PER_DAY;
       const dayEnd = dayStart + MS_PER_DAY;
       const from = Math.max(entry.start, dayStart);
       const to = Math.min(end, dayEnd);
-      if (to > from) segs.push({ dayIdx: i, from: from - dayStart, to: to - dayStart });
+      if (to > from)
+        segs.push({ dayIdx: i, from: from - dayStart, to: to - dayStart });
     }
     return segs;
   }
@@ -142,7 +192,7 @@ export class ScheduleComponent implements OnDestroy {
     const ws = this.weekStart();
     const now = this.timer.now();
     const entries = this.data.entries();
-    const byId = new Map(this.data.nodes().map(n => [n.id, n] as const));
+    const byId = new Map(this.data.nodes().map((n) => [n.id, n] as const));
     const previews = this.dragPreview();
 
     // Build path labels lazily
@@ -158,7 +208,8 @@ export class ScheduleComponent implements OnDestroy {
     };
 
     // Per-day list of placed segments first, then assign overlap lanes.
-    const days: Array<Array<RenderedBlock & { from: number; to: number }>> = Array.from({ length: 7 }, () => []);
+    const days: Array<Array<RenderedBlock & { from: number; to: number }>> =
+      Array.from({ length: 7 }, () => []);
     for (const e of entries) {
       // running entry shows as static placeholder - skip the live segment if it
       // grew past now. Use start..start+1min so it appears as a faint mark.
@@ -166,9 +217,16 @@ export class ScheduleComponent implements OnDestroy {
       let liveEnd = e.end ?? Math.min(e.start + MS_PER_MIN, now);
       // Apply preview overrides
       const pv = previews?.[e.id];
-      if (pv) { liveStart = pv.start; liveEnd = pv.end; }
+      if (pv) {
+        liveStart = pv.start;
+        liveEnd = pv.end;
+      }
       if (liveEnd <= ws || liveStart >= ws + 7 * MS_PER_DAY) continue;
-      const segs = this.segmentsForEntry({ ...e, start: liveStart }, liveEnd, ws);
+      const segs = this.segmentsForEntry(
+        { ...e, start: liveStart },
+        liveEnd,
+        ws,
+      );
       for (const seg of segs) {
         days[seg.dayIdx].push({
           entry: e,
@@ -193,9 +251,15 @@ export class ScheduleComponent implements OnDestroy {
       for (const b of list) {
         let placed = -1;
         for (let i = 0; i < lanesEnd.length; i++) {
-          if (lanesEnd[i] <= b.from) { placed = i; break; }
+          if (lanesEnd[i] <= b.from) {
+            placed = i;
+            break;
+          }
         }
-        if (placed === -1) { placed = lanesEnd.length; lanesEnd.push(0); }
+        if (placed === -1) {
+          placed = lanesEnd.length;
+          lanesEnd.push(0);
+        }
         b.laneIdx = placed;
         lanesEnd[placed] = b.to;
       }
@@ -219,7 +283,11 @@ export class ScheduleComponent implements OnDestroy {
     return Math.round(ms / (SNAP_MIN * MS_PER_MIN)) * SNAP_MIN * MS_PER_MIN;
   }
 
-  private snapToNeighbors(absMs: number, shift: boolean, ignoreEntryId: string): number {
+  private snapToNeighbors(
+    absMs: number,
+    shift: boolean,
+    ignoreEntryId: string,
+  ): number {
     if (shift) return absMs;
     const win = SNAP_NEIGHBOR_MIN * MS_PER_MIN;
     let best = absMs;
@@ -228,13 +296,20 @@ export class ScheduleComponent implements OnDestroy {
       if (e.id === ignoreEntryId || e.end == null) continue;
       for (const edge of [e.start, e.end]) {
         const d = Math.abs(edge - absMs);
-        if (d < bestDelta) { bestDelta = d; best = edge; }
+        if (d < bestDelta) {
+          bestDelta = d;
+          best = edge;
+        }
       }
     }
     return bestDelta <= win ? best : absMs;
   }
 
-  onBlockPointerDown(ev: PointerEvent, block: RenderedBlock & { from: number; to: number }, kind: DragState['kind']) {
+  onBlockPointerDown(
+    ev: PointerEvent,
+    block: RenderedBlock & { from: number; to: number },
+    kind: DragState['kind'],
+  ) {
     if (ev.button !== 0) return;
     if (block.entry.end == null) return; // running entry not draggable
     ev.preventDefault();
@@ -290,7 +365,8 @@ export class ScheduleComponent implements OnDestroy {
     const dy = ev.clientY - s.pointerStartY;
     const dx = ev.clientX - s.pointerStartX;
     const dtMs = dy / s.pxPerMs;
-    const colShift = s.kind === 'move' ? Math.round(dx / Math.max(1, s.colWidth)) : 0;
+    const colShift =
+      s.kind === 'move' ? Math.round(dx / Math.max(1, s.colWidth)) : 0;
     let newStart = s.origStart;
     let newEnd = s.origEnd;
     if (s.kind === 'move') {
@@ -300,7 +376,8 @@ export class ScheduleComponent implements OnDestroy {
       let sn = this.snap(newStart, s.shift);
       sn = this.snapToNeighbors(sn, s.shift, s.entryId);
       const delta = sn - newStart;
-      newStart += delta; newEnd += delta;
+      newStart += delta;
+      newEnd += delta;
     } else if (s.kind === 'resize-start') {
       newStart = s.origStart + dtMs;
       let sn = this.snap(newStart, s.shift);
@@ -327,7 +404,10 @@ export class ScheduleComponent implements OnDestroy {
     this.dragPreview.set(null);
     if (!s) return;
     if (s.previewStart === s.origStart && s.previewEnd === s.origEnd) return;
-    await this.data.updateEntry(s.entryId, { start: s.previewStart, end: s.previewEnd });
+    await this.data.updateEntry(s.entryId, {
+      start: s.previewStart,
+      end: s.previewEnd,
+    });
   };
 
   ngOnDestroy(): void {
@@ -360,7 +440,7 @@ export class ScheduleComponent implements OnDestroy {
   }
 
   private minutesFromEvent(ev: MouseEvent, dayIdx: number): number {
-    const colEl = (ev.currentTarget as HTMLElement);
+    const colEl = ev.currentTarget as HTMLElement;
     const rect = colEl.getBoundingClientRect();
     const y = ev.clientY - rect.top;
     const ratio = Math.max(0, Math.min(1, y / rect.height));
@@ -368,28 +448,34 @@ export class ScheduleComponent implements OnDestroy {
     return Math.round(totalMin / SNAP_MIN) * SNAP_MIN;
   }
 
-  closeMenu() { this.menu.set(null); }
+  closeMenu() {
+    this.menu.set(null);
+  }
 
   async menuEdit() {
-    const m = this.menu(); this.closeMenu();
+    const m = this.menu();
+    this.closeMenu();
     if (!m?.entryId) return;
-    const e = this.data.entries().find(x => x.id === m.entryId);
+    const e = this.data.entries().find((x) => x.id === m.entryId);
     if (e) this.openEditorFor(e);
   }
   async menuDelete() {
-    const m = this.menu(); this.closeMenu();
+    const m = this.menu();
+    this.closeMenu();
     if (!m?.entryId) return;
     if (!confirm('Delete this entry?')) return;
     await this.data.deleteEntry(m.entryId);
   }
   menuCopy() {
-    const m = this.menu(); this.closeMenu();
+    const m = this.menu();
+    this.closeMenu();
     if (!m?.entryId) return;
-    const e = this.data.entries().find(x => x.id === m.entryId);
+    const e = this.data.entries().find((x) => x.id === m.entryId);
     if (e) this.clipboard.set({ ...e });
   }
   async menuPaste() {
-    const m = this.menu(); this.closeMenu();
+    const m = this.menu();
+    this.closeMenu();
     const cb = this.clipboard();
     if (!cb || m?.dayIdx == null || m?.minutes == null) return;
     const dayStart = this.weekStart() + m.dayIdx * MS_PER_DAY;
@@ -398,7 +484,8 @@ export class ScheduleComponent implements OnDestroy {
     await this.data.addManualEntry(cb.nodeId, start, start + dur, cb.note);
   }
   menuNew() {
-    const m = this.menu(); this.closeMenu();
+    const m = this.menu();
+    this.closeMenu();
     if (m?.dayIdx == null || m?.minutes == null) return;
     const dayStart = this.weekStart() + m.dayIdx * MS_PER_DAY;
     const start = dayStart + m.minutes * MS_PER_MIN;
@@ -409,7 +496,13 @@ export class ScheduleComponent implements OnDestroy {
     if (entry) {
       this.editor.set({
         open: true,
-        draft: { id: entry.id, nodeId: entry.nodeId, start: entry.start, end: entry.end ?? entry.start + MS_PER_HOUR, note: entry.note },
+        draft: {
+          id: entry.id,
+          nodeId: entry.nodeId,
+          start: entry.start,
+          end: entry.end ?? entry.start + MS_PER_HOUR,
+          note: entry.note,
+        },
       });
     } else {
       const start = fallbackStart ?? Date.now();
@@ -423,9 +516,19 @@ export class ScheduleComponent implements OnDestroy {
   async onEditorSave(draft: EntryDraft) {
     if (!draft.nodeId) return;
     if (draft.id) {
-      await this.data.updateEntry(draft.id, { nodeId: draft.nodeId, start: draft.start, end: draft.end, note: draft.note });
+      await this.data.updateEntry(draft.id, {
+        nodeId: draft.nodeId,
+        start: draft.start,
+        end: draft.end,
+        note: draft.note,
+      });
     } else {
-      await this.data.addManualEntry(draft.nodeId, draft.start, draft.end, draft.note);
+      await this.data.addManualEntry(
+        draft.nodeId,
+        draft.start,
+        draft.end,
+        draft.note,
+      );
     }
     this.editor.set(null);
   }
@@ -434,7 +537,9 @@ export class ScheduleComponent implements OnDestroy {
     await this.data.deleteEntry(id);
     this.editor.set(null);
   }
-  onEditorCancel() { this.editor.set(null); }
+  onEditorCancel() {
+    this.editor.set(null);
+  }
 
   // ---------- Tree template drag ----------
 
@@ -461,7 +566,9 @@ export class ScheduleComponent implements OnDestroy {
     });
   }
   async onColDrop(ev: DragEvent, dayIdx: number) {
-    const nodeId = ev.dataTransfer?.getData('application/x-worktrack-node') || this.templateDragNodeId();
+    const nodeId =
+      ev.dataTransfer?.getData('application/x-worktrack-node') ||
+      this.templateDragNodeId();
     this.templateDragNodeId.set(null);
     this.templateDragPreview.set(null);
     if (!nodeId) return;
@@ -475,19 +582,28 @@ export class ScheduleComponent implements OnDestroy {
   // ---------- Tree (sidebar) data ----------
 
   readonly treeFilter = signal('');
-  private readonly childrenByParent = computed(() => indexChildren(this.data.nodes().filter(n => !n.archived)));
+  private readonly childrenByParent = computed(() =>
+    indexChildren(this.data.nodes().filter((n) => !n.archived)),
+  );
   readonly treeRoots = computed(() => this.childrenByParent().get(null) ?? []);
-  childrenOf(id: string | null): Node[] { return this.childrenByParent().get(id) ?? []; }
+  childrenOf(id: string | null): Node[] {
+    return this.childrenByParent().get(id) ?? [];
+  }
 
   readonly treeVisibleIds = computed(() => {
     const f = this.treeFilter().trim().toLowerCase();
     if (!f) return null;
     const all = this.data.nodes();
-    const matching = new Set(all.filter(n => n.name.toLowerCase().includes(f)).map(n => n.id));
-    const byId = new Map(all.map(n => [n.id, n] as const));
+    const matching = new Set(
+      all.filter((n) => n.name.toLowerCase().includes(f)).map((n) => n.id),
+    );
+    const byId = new Map(all.map((n) => [n.id, n] as const));
     for (const id of [...matching]) {
       let cur = byId.get(id);
-      while (cur?.parentId) { matching.add(cur.parentId); cur = byId.get(cur.parentId); }
+      while (cur?.parentId) {
+        matching.add(cur.parentId);
+        cur = byId.get(cur.parentId);
+      }
     }
     return matching;
   });
@@ -507,7 +623,8 @@ export class ScheduleComponent implements OnDestroy {
   });
   readonly todayDayIdx = computed(() => {
     for (let i = 0; i < 7; i++) {
-      if (this.isSameDay(this.weekStart() + i * MS_PER_DAY, this.timer.now())) return i;
+      if (this.isSameDay(this.weekStart() + i * MS_PER_DAY, this.timer.now()))
+        return i;
     }
     return -1;
   });
@@ -519,7 +636,8 @@ export class ScheduleComponent implements OnDestroy {
 
   formatRange(start: number, end: number): string {
     const dur = Math.max(0, Math.round((end - start) / MS_PER_MIN));
-    const h = Math.floor(dur / 60), m = dur % 60;
+    const h = Math.floor(dur / 60),
+      m = dur % 60;
     return `${this.formatBlockTime(start)}–${this.formatBlockTime(end)} · ${h}:${String(m).padStart(2, '0')}`;
   }
 }
