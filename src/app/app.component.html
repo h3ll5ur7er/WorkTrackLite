@@ -1,118 +1,54 @@
-<div class="app" [attr.data-theme]="data.settings().theme">
+<div class="app">
   <header class="app__header">
-    <div class="app__brand">
-      <span class="app__logo">⏱</span>
+    <a class="app__brand" routerLink="/dashboard" aria-label="WorkTrackLite home">
+      <span class="app__logo" aria-hidden="true">⏱</span>
       <strong>WorkTrackLite</strong>
-    </div>
+    </a>
 
-    @if (!empty()) {
-      <nav class="app__nav app__nav--top">
-        @for (v of views; track v) {
-          <button
-            class="app__nav-btn"
-            [class.app__nav-btn--active]="view() === v.id"
-            (click)="setView(v.id)"
-          >
-            <span class="app__nav-icon">{{ v.icon }}</span>
+    @if (data.ready() && !empty()) {
+      <nav class="app__nav app__nav--top" aria-label="Main">
+        @for (v of nav; track v.path) {
+          <a class="app__nav-btn" [routerLink]="v.path" routerLinkActive="app__nav-btn--active" ariaCurrentWhenActive="page">
+            <span class="app__nav-icon" aria-hidden="true">{{ v.icon }}</span>
             <span class="app__nav-label">{{ v.label }}</span>
-          </button>
+          </a>
         }
       </nav>
     }
 
     <div class="app__tools">
+      <app-command-palette />
       <button
+        type="button"
         class="btn"
-        (click)="openPalette()"
-        title="Command palette (Ctrl/Cmd+K)"
+        (click)="theme.toggle()"
+        [attr.aria-label]="'Switch to ' + (theme.effective() === 'dark' ? 'light' : 'dark') + ' theme'"
       >
-        ⌘K
-      </button>
-      <a
-        class="btn"
-        href="worktrack-singlefile.html"
-        download="worktracklite.html"
-        title="Download the entire app as a single HTML file"
-        aria-label="Download the entire app as a single HTML file"
-        >⬇</a
-      >
-      <button class="btn" (click)="toggleTheme()" title="Toggle theme">
-        {{ data.settings().theme === "dark" ? "☀" : "☾" }}
+        {{ theme.effective() === 'dark' ? '☀' : '☾' }}
       </button>
     </div>
   </header>
 
-  @if (data.ready()) {
-    @if (!empty()) {
-      <!-- Dashboard view -->
-      @if (view() === "dashboard") {
-        <main class="app__main app__main--single">
-          <app-dashboard></app-dashboard>
-        </main>
-      }
-      <!-- Schedule view -->
-      @if (view() === "schedule") {
-        <main class="app__main app__main--single">
-          <app-schedule></app-schedule>
-        </main>
-      }
-      <!-- Manage view (the original two-pane editor) -->
-      @if (view() === "manage") {
-        <main class="app__main">
-          <aside class="app__sidebar">
-            <div class="app__sidebar-actions">
-              <button
-                class="btn btn--primary"
-                (click)="showAddRoot.set(!showAddRoot())"
-              >
-                + New top-level
-              </button>
-            </div>
-            @if (showAddRoot()) {
-              <div class="row">
-                <input
-                  placeholder="Name"
-                  [ngModel]="newRootName()"
-                  (ngModelChange)="newRootName.set($event)"
-                />
-                <input
-                  placeholder="Kind"
-                  [ngModel]="newRootKind()"
-                  (ngModelChange)="newRootKind.set($event)"
-                />
-                <button class="btn" (click)="addRoot()">Add</button>
-              </div>
-            }
-            <app-tree #tree></app-tree>
-          </aside>
-          <section class="app__content">
-            <app-node-detail
-              [node]="tree.selectedNode()"
-              (addedChild)="tree.select($event)"
-            ></app-node-detail>
-          </section>
-        </main>
-      }
-      <app-timer-bar></app-timer-bar>
-      <!-- Bottom nav (mobile) -->
-      <nav class="app__nav app__nav--bottom">
-        @for (v of views; track v) {
-          <button
-            class="app__nav-btn"
-            [class.app__nav-btn--active]="view() === v.id"
-            (click)="setView(v.id)"
-          >
-            <span class="app__nav-icon">{{ v.icon }}</span>
-            <span class="app__nav-label">{{ v.label }}</span>
-          </button>
-        }
-      </nav>
-    } @else {
-      <app-setup></app-setup>
-    }
+  @if (data.error(); as err) {
+    <div class="app__message app__message--error" role="alert">{{ err }}</div>
+  } @else if (!data.ready()) {
+    <div class="app__message">Loading…</div>
+  } @else if (empty()) {
+    <app-setup />
   } @else {
-    <div class="app__loading">Loading…</div>
+    <main class="app__main">
+      <router-outlet />
+    </main>
+    <app-timer-bar />
+    <nav class="app__nav app__nav--bottom" aria-label="Main (mobile)">
+      @for (v of nav; track v.path) {
+        <a class="app__nav-btn" [routerLink]="v.path" routerLinkActive="app__nav-btn--active" ariaCurrentWhenActive="page">
+          <span class="app__nav-icon" aria-hidden="true">{{ v.icon }}</span>
+          <span class="app__nav-label">{{ v.label }}</span>
+        </a>
+      }
+    </nav>
   }
 
-  <app-command-palette></app-command-palette>
+  <app-toasts />
 </div>

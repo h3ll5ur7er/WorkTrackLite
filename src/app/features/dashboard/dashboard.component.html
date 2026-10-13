@@ -1,0 +1,124 @@
+<div class="dash">
+  <div class="dash__toolbar">
+    <label class="visually-hidden" for="dash-filter">Filter cards</label>
+    <input
+      id="dash-filter"
+      class="dash__search"
+      type="search"
+      placeholder="Filter cards…"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+    />
+    <span class="dash__count" aria-live="polite">{{ cards().length }} / {{ totalCards() }} cards</span>
+  </div>
+
+  @if (!totalCards()) {
+    <div class="dash__empty">
+      <p>No dashboard cards yet.</p>
+      <p class="muted">
+        Leaf nodes appear here automatically — add some children in <a routerLink="/manage">Manage</a>, or enable “Show on dashboard” on any
+        node.
+      </p>
+    </div>
+  }
+
+  <div class="dash__grid">
+    @for (c of cards(); track c.node.id) {
+      <article
+        class="card"
+        [class.card--running]="c.isRunning"
+        [class.card--over]="c.overBudget"
+        [class.card--soft]="c.softBreached"
+        [attr.data-node-id]="c.node.id"
+        appLongPress
+        (appLongPress)="onLongPress($event, c)"
+        (contextmenu)="onContextMenu($event, c)"
+      >
+        <button
+          type="button"
+          class="card__toggle"
+          [attr.aria-pressed]="c.isRunning"
+          [attr.aria-label]="(c.isRunning ? 'Stop timer on ' : 'Start timer on ') + c.node.name"
+          (click)="toggle(c)"
+        ></button>
+
+        <div class="card__content">
+          @if (c.pathLabels.length) {
+            <div class="card__breadcrumb">
+              @for (p of c.pathLabels; track $index; let last = $last) {
+                <span>{{ p }}</span>
+                @if (!last) {
+                  <span class="card__sep" aria-hidden="true">›</span>
+                }
+              }
+            </div>
+          }
+          <h2 class="card__title">
+            <span class="card__kind">{{ c.node.kind }}</span>
+            {{ c.node.name }}
+          </h2>
+
+          <div class="card__chart" aria-hidden="true">
+            <app-burndown-chart [entries]="c.entries" [budget]="c.node.budget" [now]="timer.minute()" />
+          </div>
+
+          <div class="card__metrics">
+            <div class="card__metric">
+              <span class="card__label">Tracked</span>
+              <span class="card__value">{{ formatHM(c.trackedSeconds) }}</span>
+            </div>
+            @if (c.node.budget.type === 'fixed') {
+              <div class="card__metric">
+                <span class="card__label">Remaining</span>
+                <span class="card__value" [class.card__value--over]="c.overBudget" [class.card__value--soft]="c.softBreached">{{
+                  formatHM(c.remainingSeconds)
+                }}</span>
+              </div>
+            } @else if (c.node.budget.type === 'target') {
+              <div class="card__metric">
+                <span class="card__label">Target</span>
+                <span class="card__value" [class.card__value--over]="c.overBudget" [class.card__value--soft]="c.softBreached">{{
+                  formatHM(c.budgetSeconds)
+                }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="card__action" aria-hidden="true">
+            @if (c.isRunning) {
+              <span class="card__pulse"></span>
+              <span>Running — click to stop</span>
+            } @else {
+              <span>Click to start timer</span>
+            }
+          </div>
+        </div>
+
+        <button
+          #more
+          type="button"
+          class="btn btn--ghost btn--small card__more"
+          aria-haspopup="menu"
+          [attr.aria-label]="'More actions for ' + c.node.name"
+          (click)="openMenuFrom(more, c)"
+        >
+          ⋯
+        </button>
+      </article>
+    }
+  </div>
+
+  @if (menu(); as m) {
+    <app-context-menu
+      [x]="m.x"
+      [y]="m.y"
+      [items]="menuItems(m.card)"
+      [label]="'Actions for ' + m.card.node.name"
+      (closed)="menu.set(null)"
+    />
+  }
+
+  @if (editor(); as d) {
+    <app-entry-editor [draft]="d" (saved)="saveEntry($event)" (cancelled)="editor.set(null)" />
+  }
+</div>

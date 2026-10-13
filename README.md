@@ -46,7 +46,7 @@ includes both the regular PWA and the single-file artifact at
 `/worktrack-singlefile.html`.
 
 To enable Pages once, in the repo settings choose
-*Settings → Pages → Build and deployment → Source: GitHub Actions*.
+_Settings → Pages → Build and deployment → Source: GitHub Actions_.
 
 ## Architecture
 

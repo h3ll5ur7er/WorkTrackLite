@@ -1,0 +1,144 @@
+<div class="sched">
+  <aside class="sched__side" aria-label="Nodes to schedule">
+    <div class="sched__side-head">
+      <strong>Drag to schedule</strong>
+      <small>Drop on the calendar for a 1h block</small>
+    </div>
+    <label class="visually-hidden" for="sched-filter">Filter nodes</label>
+    <input
+      id="sched-filter"
+      class="sched__filter"
+      type="search"
+      placeholder="Filter…"
+      [value]="treeFilter()"
+      (input)="treeFilter.set($any($event.target).value)"
+    />
+    <ul class="tt">
+      <ng-container *ngTemplateOutlet="branch; context: { $implicit: treeRoots() }" />
+    </ul>
+    <ng-template #branch let-nodes>
+      @for (n of nodes; track n.id) {
+        @if (isTreeVisible(n.id)) {
+          <li>
+            <div
+              class="tt__node"
+              draggable="true"
+              (dragstart)="onTreeDragStart($event, n)"
+              (dragend)="onTreeDragEnd()"
+              [title]="'Drag to schedule a 1h block of ' + n.name"
+            >
+              <span class="tt__handle" aria-hidden="true">⋮⋮</span>
+              <span class="tt__kind">{{ n.kind }}</span>
+              <span class="tt__name">{{ n.name }}</span>
+            </div>
+            @if (childrenOf(n).length) {
+              <ul>
+                <ng-container *ngTemplateOutlet="branch; context: { $implicit: childrenOf(n) }" />
+              </ul>
+            }
+          </li>
+        }
+      }
+    </ng-template>
+  </aside>
+
+  <section class="sched__main" aria-label="Week calendar">
+    <header class="sched__header">
+      <div class="sched__nav">
+        <button type="button" class="btn" (click)="prevWeek()" aria-label="Previous week">‹</button>
+        <button type="button" class="btn" (click)="thisWeek()">This week</button>
+        <button type="button" class="btn" (click)="nextWeek()" aria-label="Next week">›</button>
+      </div>
+      <div class="sched__week-label" aria-live="polite" data-testid="week-label">{{ days()[0].label }} – {{ days()[6].label }}</div>
+      <div class="sched__actions">
+        <button type="button" class="btn btn--primary" (click)="openEditor(null)">+ New entry</button>
+      </div>
+    </header>
+
+    <div class="sched__day-row">
+      <div class="sched__gutter-spacer"></div>
+      @for (d of days(); track d.ms) {
+        <div class="sched__day-head" [class.sched__day-head--today]="d.isToday">{{ d.label }}</div>
+      }
+    </div>
+
+    <div class="sched__scroll" #scroller>
+      <div class="sched__grid" [style.height.px]="dayHeightPx">
+        <div class="sched__gutter" aria-hidden="true">
+          @for (h of hours; track h) {
+            <div class="sched__gutter-cell">{{ h }}:00</div>
+          }
+        </div>
+        @for (d of days(); track d.ms; let dayIdx = $index) {
+          <div
+            #col
+            class="sched__col"
+            [class.sched__col--today]="d.isToday"
+            [class.sched__col--drop]="dropGhost()?.dayIdx === dayIdx"
+            [attr.data-day]="dayIdx"
+            [attr.aria-label]="d.label"
+            role="group"
+            appLongPress
+            (appLongPress)="onColLongPress($event, d.ms, col)"
+            (contextmenu)="onColContext($event, d.ms)"
+            (dragover)="onColDragOver($event, dayIdx)"
+            (dragleave)="dropGhost.set(null)"
+            (drop)="onColDrop($event, d.ms)"
+          >
+            @for (h of hours; track h) {
+              <div class="sched__hour-line" [style.top.%]="(h / 24) * 100"></div>
+            }
+            @if (todayIdx() === dayIdx) {
+              <div class="sched__now" [style.top.%]="(nowTopMin() / 1440) * 100"></div>
+            }
+            @if (dropGhost(); as g) {
+              @if (g.dayIdx === dayIdx) {
+                <div class="sched__ghost" [style.top.%]="(g.topMin / 1440) * 100" [style.height.%]="(60 / 1440) * 100"></div>
+              }
+            }
+            @for (seg of columns()[dayIdx]; track seg.entry.id) {
+              <div
+                class="block"
+                role="button"
+                tabindex="0"
+                [attr.aria-label]="blockLabel(seg)"
+                [attr.data-entry-id]="seg.entry.id"
+                [class.block--running]="seg.entry.end === null"
+                [class.block--overlap]="seg.overlap"
+                [class.block--dragging]="isPreviewing(seg)"
+                [style.top.%]="(seg.topMin / 1440) * 100"
+                [style.height.%]="(seg.heightMin / 1440) * 100"
+                [style.left.%]="(100 / seg.laneCount) * seg.lane"
+                [style.width.%]="100 / seg.laneCount"
+                (pointerdown)="onBlockPointerDown($event, seg, 'move')"
+                (click)="onBlockClick($event, seg)"
+                (keydown)="onBlockKey($event, seg)"
+                (contextmenu)="onBlockContext($event, seg)"
+              >
+                <div class="block__handle block__handle--top" (pointerdown)="onBlockPointerDown($event, seg, 'resize-start')"></div>
+                <div class="block__inner">
+                  <div class="block__title">{{ nodeName(seg.entry) }}</div>
+                  <div class="block__meta">
+                    {{ formatRange(segStart(seg), segEnd(seg)) }}{{ seg.entry.end === null ? ' · running' : '' }}
+                  </div>
+                  @if (pathLabel(seg.entry); as p) {
+                    <div class="block__path">{{ p }}</div>
+                  }
+                </div>
+                <div class="block__handle block__handle--bottom" (pointerdown)="onBlockPointerDown($event, seg, 'resize-end')"></div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  @if (menu(); as m) {
+    <app-context-menu [x]="m.x" [y]="m.y" [items]="menuItems(m)" (closed)="menu.set(null)" />
+  }
+
+  @if (editor(); as d) {
+    <app-entry-editor [draft]="d" (saved)="onEditorSave($event)" (cancelled)="editor.set(null)" (deleted)="onEditorDelete($event)" />
+  }
+</div>
