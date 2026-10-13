@@ -1,9 +1,17 @@
-import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
+import { ApplicationConfig, isDevMode, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { provideRouter, withComponentInputBinding, withHashLocation } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideServiceWorker('ngsw-worker.js', {
-            enabled: !isDevMode(),
-            registrationStrategy: 'registerWhenStable:30000'
-          })]
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    // Hash URLs work everywhere the app is hosted: GitHub Pages sub-paths,
+    // any static server, and the single-file build opened from file://.
+    provideRouter(routes, withHashLocation(), withComponentInputBinding()),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
+  ],
 };

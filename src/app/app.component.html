@@ -1,84 +1,54 @@
-<div class="app" [attr.data-theme]="data.settings().theme">
+<div class="app">
   <header class="app__header">
-    <div class="app__brand">
-      <span class="app__logo">⏱</span>
+    <a class="app__brand" routerLink="/dashboard" aria-label="WorkTrackLite home">
+      <span class="app__logo" aria-hidden="true">⏱</span>
       <strong>WorkTrackLite</strong>
-    </div>
+    </a>
 
-    <nav class="app__nav app__nav--top" *ngIf="!empty()">
-      <button *ngFor="let v of views"
-              class="app__nav-btn"
-              [class.app__nav-btn--active]="view() === v.id"
-              (click)="setView(v.id)">
-        <span class="app__nav-icon">{{ v.icon }}</span>
-        <span class="app__nav-label">{{ v.label }}</span>
-      </button>
-    </nav>
+    @if (data.ready() && !empty()) {
+      <nav class="app__nav app__nav--top" aria-label="Main">
+        @for (v of nav; track v.path) {
+          <a class="app__nav-btn" [routerLink]="v.path" routerLinkActive="app__nav-btn--active" ariaCurrentWhenActive="page">
+            <span class="app__nav-icon" aria-hidden="true">{{ v.icon }}</span>
+            <span class="app__nav-label">{{ v.label }}</span>
+          </a>
+        }
+      </nav>
+    }
 
     <div class="app__tools">
-      <button class="btn" (click)="openPalette()" title="Command palette (Ctrl/Cmd+K)">⌘K</button>
-      <a class="btn" href="worktrack-singlefile.html" download="worktracklite.html"
-         title="Download the entire app as a single HTML file"
-         aria-label="Download the entire app as a single HTML file">⬇</a>
-      <button class="btn" (click)="toggleTheme()" title="Toggle theme">
-        {{ data.settings().theme === 'dark' ? '☀' : '☾' }}
+      <app-command-palette />
+      <button
+        type="button"
+        class="btn"
+        (click)="theme.toggle()"
+        [attr.aria-label]="'Switch to ' + (theme.effective() === 'dark' ? 'light' : 'dark') + ' theme'"
+      >
+        {{ theme.effective() === 'dark' ? '☀' : '☾' }}
       </button>
     </div>
   </header>
 
-  <ng-container *ngIf="data.ready(); else loading">
-    <ng-container *ngIf="!empty(); else first">
-
-      <!-- Dashboard view -->
-      <main class="app__main app__main--single" *ngIf="view() === 'dashboard'">
-        <app-dashboard></app-dashboard>
-      </main>
-
-      <!-- Schedule view -->
-      <main class="app__main app__main--single" *ngIf="view() === 'schedule'">
-        <app-schedule></app-schedule>
-      </main>
-
-      <!-- Manage view (the original two-pane editor) -->
-      <main class="app__main" *ngIf="view() === 'manage'">
-        <aside class="app__sidebar">
-          <div class="app__sidebar-actions">
-            <button class="btn btn--primary" (click)="showAddRoot.set(!showAddRoot())">+ New top-level</button>
-          </div>
-          <div *ngIf="showAddRoot()" class="row">
-            <input placeholder="Name" [ngModel]="newRootName()" (ngModelChange)="newRootName.set($event)" />
-            <input placeholder="Kind" [ngModel]="newRootKind()" (ngModelChange)="newRootKind.set($event)" />
-            <button class="btn" (click)="addRoot()">Add</button>
-          </div>
-          <app-tree #tree></app-tree>
-        </aside>
-        <section class="app__content">
-          <app-node-detail [node]="tree.selectedNode()" (addedChild)="tree.select($event)"></app-node-detail>
-        </section>
-      </main>
-
-      <app-timer-bar></app-timer-bar>
-
-      <!-- Bottom nav (mobile) -->
-      <nav class="app__nav app__nav--bottom">
-        <button *ngFor="let v of views"
-                class="app__nav-btn"
-                [class.app__nav-btn--active]="view() === v.id"
-                (click)="setView(v.id)">
-          <span class="app__nav-icon">{{ v.icon }}</span>
+  @if (data.error(); as err) {
+    <div class="app__message app__message--error" role="alert">{{ err }}</div>
+  } @else if (!data.ready()) {
+    <div class="app__message">Loading…</div>
+  } @else if (empty()) {
+    <app-setup />
+  } @else {
+    <main class="app__main">
+      <router-outlet />
+    </main>
+    <app-timer-bar />
+    <nav class="app__nav app__nav--bottom" aria-label="Main (mobile)">
+      @for (v of nav; track v.path) {
+        <a class="app__nav-btn" [routerLink]="v.path" routerLinkActive="app__nav-btn--active" ariaCurrentWhenActive="page">
+          <span class="app__nav-icon" aria-hidden="true">{{ v.icon }}</span>
           <span class="app__nav-label">{{ v.label }}</span>
-        </button>
-      </nav>
-    </ng-container>
+        </a>
+      }
+    </nav>
+  }
 
-    <ng-template #first>
-      <app-setup></app-setup>
-    </ng-template>
-  </ng-container>
-
-  <ng-template #loading>
-    <div class="app__loading">Loading…</div>
-  </ng-template>
-
-  <app-command-palette></app-command-palette>
+  <app-toasts />
 </div>

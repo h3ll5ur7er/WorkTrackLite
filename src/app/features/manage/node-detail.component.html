@@ -1,0 +1,218 @@
+@if (node(); as n) {
+  <header class="nd__header">
+    <div class="nd__title">
+      @if (path().length) {
+        <div class="nd__path">{{ path().join(' › ') }}</div>
+      }
+      <div class="nd__title-row">
+        <span class="nd__kind">{{ n.kind }}</span>
+        <label class="visually-hidden" for="nd-name">Name</label>
+        <input id="nd-name" class="nd__name" [value]="n.name" (change)="rename($any($event.target).value)" />
+        @if (n.archived) {
+          <span class="nd__badge">archived</span>
+        }
+      </div>
+    </div>
+    <div class="nd__actions">
+      @if (isRunningHere()) {
+        <button type="button" class="btn btn--danger" (click)="stopTimer()">■ Stop</button>
+      } @else if (!n.archived) {
+        <button type="button" class="btn btn--primary" (click)="startTimer()">▶ Start</button>
+      }
+      <button type="button" class="btn" (click)="exportCsv('node')">CSV (this)</button>
+      @if (hasChildren()) {
+        <button type="button" class="btn" (click)="exportCsv('subtree')">CSV (subtree)</button>
+      }
+      <button type="button" class="btn" (click)="setArchived(!n.archived)">{{ n.archived ? 'Unarchive' : 'Archive' }}</button>
+      <button type="button" class="btn btn--ghost" (click)="deleteNode()">Delete</button>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="nd-budget">
+    <h2 id="nd-budget">Budget</h2>
+    <div class="grid">
+      <label class="field">
+        <span>Type</span>
+        <select (change)="setBudgetType($any($event.target).value)">
+          <option value="none" [selected]="n.budget.type === 'none'">None (track only)</option>
+          <option value="target" [selected]="n.budget.type === 'target'">Target (count up)</option>
+          <option value="fixed" [selected]="n.budget.type === 'fixed'">Fixed (burn down)</option>
+        </select>
+      </label>
+      @if (n.budget.type !== 'none') {
+        <label class="field">
+          <span>{{ n.budget.type === 'fixed' ? 'Budget' : 'Target' }} (hours)</span>
+          <input
+            type="number"
+            min="0"
+            step="0.25"
+            [value]="(n.budget.seconds || 0) / 3600"
+            (change)="setBudgetHours($any($event.target).valueAsNumber)"
+          />
+        </label>
+        <label class="field">
+          <span>Warn at (hours tracked, optional)</span>
+          <input
+            type="number"
+            min="0"
+            step="0.25"
+            [value]="n.budget.softLimit ? n.budget.softLimit / 3600 : ''"
+            (change)="setSoftLimitHours($any($event.target).valueAsNumber)"
+          />
+        </label>
+      }
+    </div>
+
+    @if (report(); as r) {
+      <dl class="report">
+        <div class="report__row">
+          <dt>Tracked{{ hasChildren() ? ' (incl. children)' : '' }}</dt>
+          <dd class="report__value">{{ formatHMS(r.trackedSeconds) }}</dd>
+        </div>
+        @if (hasChildren()) {
+          <div class="report__row">
+            <dt>Tracked on this node only</dt>
+            <dd class="report__value">{{ formatHMS(ownSeconds()) }}</dd>
+          </div>
+        }
+        @if (r.type !== 'none') {
+          <div class="report__row">
+            <dt>{{ r.type === 'fixed' ? 'Remaining' : 'Left to target' }}</dt>
+            <dd class="report__value" [class.report__value--over]="r.overBudget" [class.report__value--soft]="r.softBreached">
+              {{ formatHMS(r.remainingSeconds) }}
+            </dd>
+          </div>
+        }
+      </dl>
+      @if (r.type !== 'none' && r.budgetSeconds > 0) {
+        <div
+          class="report__bar"
+          role="meter"
+          aria-label="Budget used"
+          aria-valuemin="0"
+          [attr.aria-valuemax]="r.budgetSeconds"
+          [attr.aria-valuenow]="r.trackedSeconds"
+        >
+          <div
+            class="report__bar-fill"
+            [style.width.%]="r.ratio * 100 > 100 ? 100 : r.ratio * 100"
+            [class.report__bar-fill--over]="r.overBudget"
+            [class.report__bar-fill--soft]="r.softBreached"
+          ></div>
+        </div>
+      }
+    }
+  </section>
+
+  <section class="panel" aria-labelledby="nd-details">
+    <h2 id="nd-details">Details</h2>
+    <div class="grid">
+      <label class="field">
+        <span>Kind</span>
+        <input [value]="n.kind" (change)="setKind($any($event.target).value)" />
+      </label>
+      <label class="field">
+        <span>Tags (comma separated)</span>
+        <input [value]="(n.tags ?? []).join(', ')" (change)="setTags($any($event.target).value)" />
+      </label>
+    </div>
+    <label class="field nd__notes">
+      <span>Notes</span>
+      <textarea rows="3" [value]="n.notes ?? ''" (change)="setNotes($any($event.target).value)"></textarea>
+    </label>
+    <label class="check">
+      <input type="checkbox" [checked]="n.showInDashboard ?? isLeaf()" (change)="setShowInDashboard($any($event.target).checked)" />
+      Show on the dashboard
+      <small class="muted">Leaf nodes are shown by default; inner nodes only when enabled here.</small>
+    </label>
+  </section>
+
+  <section class="panel" aria-labelledby="nd-position">
+    <h2 id="nd-position">Position</h2>
+    <div class="row">
+      <button type="button" class="btn" [disabled]="siblingPosition().first" (click)="reorder(-1)" aria-label="Move up">↑ Up</button>
+      <button type="button" class="btn" [disabled]="siblingPosition().last" (click)="reorder(1)" aria-label="Move down">↓ Down</button>
+      <label class="field nd__move">
+        <span>Parent</span>
+        <select (change)="moveTo($any($event.target).value)">
+          <option value="" [selected]="!n.parentId">(top level)</option>
+          @for (p of parentOptions(); track p.id) {
+            <option [value]="p.id" [selected]="p.id === n.parentId">{{ p.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="nd-child">
+    <h2 id="nd-child">Add child</h2>
+    <form class="row" (submit)="$event.preventDefault(); addChild()">
+      <input aria-label="Child name" placeholder="Name" [value]="newChildName()" (input)="newChildName.set($any($event.target).value)" />
+      <input
+        aria-label="Child kind"
+        [placeholder]="'Kind (' + suggestedChildKind() + ')'"
+        [value]="newChildKind()"
+        (input)="newChildKind.set($any($event.target).value)"
+      />
+      <button type="submit" class="btn btn--primary" [disabled]="!newChildName().trim()">+ Add</button>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="nd-entries">
+    <div class="nd__entries-head">
+      <h2 id="nd-entries">Entries ({{ ownEntries().length }})</h2>
+      <button type="button" class="btn" (click)="newEntry()">+ Log time</button>
+    </div>
+    @if (ownEntries().length) {
+      <table class="entries">
+        <thead>
+          <tr>
+            <th scope="col">Start</th>
+            <th scope="col">End</th>
+            <th scope="col">Duration</th>
+            <th scope="col">Note</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of ownEntries(); track e.id) {
+            <tr>
+              <td>{{ e.start | date: 'short' }}</td>
+              <td>
+                @if (e.end !== null) {
+                  {{ e.end | date: 'short' }}
+                } @else {
+                  <em>running…</em>
+                }
+              </td>
+              <td class="entries__num">{{ formatHMS(entrySeconds(e)) }}</td>
+              <td>
+                {{ e.note }}
+                @for (t of e.tags ?? []; track t) {
+                  <span class="nd__tag">{{ t }}</span>
+                }
+              </td>
+              <td class="entries__actions">
+                @if (e.end !== null) {
+                  <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
+                }
+                <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="muted">No entries yet — start the timer or log time manually.</p>
+    }
+  </section>
+
+  @if (editor(); as d) {
+    <app-entry-editor [draft]="d" (saved)="saveEntry($event)" (cancelled)="editor.set(null)" (deleted)="deleteEntry($event)" />
+  }
+} @else {
+  <div class="nd__empty">
+    <h2>Select a node</h2>
+    <p class="muted">Pick something on the left, or add a top-level node.</p>
+  </div>
+}

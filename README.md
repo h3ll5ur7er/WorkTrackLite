@@ -1,80 +1,76 @@
 # WorkTrackLite
 
 A **local-first, hierarchical time tracker** that runs entirely in your browser.
-Built with Angular 18, ships as a Progressive Web App, persists everything to
-IndexedDB, and can be exported as a single self-contained HTML file you can
-drop on any disk or static host.
+No backend, no account, no telemetry: data lives in IndexedDB on your device.
+It installs as a PWA, works offline, and also ships as **one self-contained HTML
+file** you can open straight from disk.
 
-## Highlights
+## Features
 
-- **User-defined hierarchies.** Customer → Project → Phase → Task is just one
-  template — pick `Software Development`, `Accounting`, `Consulting` or
-  `Personal` on first run, or define your own labels per node.
-- **Multiple budget models per node:**
-  - `none` — track only.
-  - `per_hour` — sum-up target (target hours, can grow without limit).
-  - `fixed` — burn-down budget that goes negative on overshoot.
-  - Optional **soft limit** for early warnings.
-- **Live timer** with one-click start/stop, plus **manual entry** and a
-  **resume last task** action.
-- **Command palette** (`Ctrl/Cmd+K`) for keyboard-first navigation, search and
-  starting timers.
-- **CSV export** of the selected node or its full subtree.
-- **PWA** — installable on desktop & mobile, fully offline once loaded
-  (service worker, manifest, icons all included).
-- **Single-file build** — `npm run build:singlefile` produces a ~360 kB
-  `dist/worktrack-singlefile.html` containing the whole app inline. There's
-  a download button in the header to grab it from the running app.
-- **Dark / light theme**, responsive layout.
-- **No backend, no telemetry.** All data lives in your browser's IndexedDB.
+- **Your own hierarchy.** Customer → Project → Phase → Task is just one template
+  (others: Accounting, Consulting, Personal). Every node has a free-text kind,
+  notes and tags; reorder, move or archive nodes at any time.
+- **Budgets per node, covering its whole subtree:**
+  `none` (track only), `target` (count up towards a goal) or `fixed` (burns down,
+  goes negative on overshoot), each with an optional early-warning threshold.
+- **Dashboard** of leaf nodes with burn-down charts. Click a card to start or
+  stop its timer; every timer action can be undone.
+- **Weekly schedule** with drag-to-move, resize, snapping (15 min, or 1 min with
+  <kbd>Shift</kbd>), copy/paste, drag-from-tree and a live running timer.
+- **Command palette** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>) for navigation, timers and commands.
+- **JSON backup / restore** and a request for persistent storage, so the browser
+  does not silently evict your data. **CSV export** per node or subtree.
+- Dark / light / system theme, keyboard and screen-reader friendly, touch support
+  (long-press opens context menus).
 
 ## Quick start
 
+Requires Node.js 24 LTS (see `.nvmrc`; 22.22.3+ also works).
+
 ```bash
 npm ci
-npm start            # dev server on http://localhost:4200
-npm test             # headless unit tests
-npm run build        # production PWA build → dist/worktrack/browser/
-npm run build:singlefile  # also produces dist/worktrack-singlefile.html
+npm start                 # dev server on http://localhost:4200
+npm test                  # unit tests (Vitest)
+npm run e2e               # production + single-file build, then Playwright e2e
+npm run check             # everything CI runs: format, lint, unit, e2e
 ```
+
+First e2e run on a new machine: `npx playwright install --with-deps chromium`.
+
+| Script                        | What it does                                                 |
+| ----------------------------- | ------------------------------------------------------------ |
+| `npm run build`               | Production PWA build → `dist/worktrack/browser/`             |
+| `npm run build:singlefile`    | Also writes `dist/worktrack-singlefile.html`                 |
+| `npm run test:watch`          | Unit tests in watch mode                                     |
+| `npm run test:coverage`       | Unit tests with coverage report in `coverage/`               |
+| `npm run e2e:only`            | Playwright against an existing `dist/` (skip the build)      |
+| `npm run lint`                | ESLint (incl. template accessibility rules) + e2e type-check |
+| `npm run format`              | Prettier                                                     |
+| `node scripts/serve-dist.mjs` | Serve the production build on http://localhost:4300          |
 
 ## Deployment
 
-A GitHub Actions workflow (`.github/workflows/deploy.yml`) builds and
-deploys to **GitHub Pages** on every push to `main`. The deployed site
-includes both the regular PWA and the single-file artifact at
-`/worktrack-singlefile.html`.
+`.github/workflows/ci.yml` runs format, lint, unit tests and e2e tests on every
+pull request and push. On `main`, a green run deploys to **GitHub Pages**
+(including `/worktrack-singlefile.html`). Enable it once under
+_Settings → Pages → Build and deployment → Source: GitHub Actions_.
 
-To enable Pages once, in the repo settings choose
-*Settings → Pages → Build and deployment → Source: GitHub Actions*.
+## Your data
 
-## Architecture
+Everything is stored in the browser profile that opened the app (and the
+single-file copy has its own, separate storage). Use **Settings → Export
+backup** regularly; restore works on any device. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#data-and-backups) for the format.
 
-```
-src/app/
-  data/
-    models.ts        # Node, TimeEntry, Budget, Settings, HierarchyTemplate
-    db.ts            # Dexie schema + uid()
-    templates.ts     # built-in hierarchy templates
-  services/
-    data.service.ts  # liveQuery → Angular signals; node/entry CRUD
-    timer.service.ts # single live timer state
-    budget.ts        # pure budget math (unit-tested)
-    csv.ts           # pure CSV export (unit-tested)
-  components/
-    tree/            # hierarchical sidebar with filter
-    node-detail/     # selected-node panel: budget, entries, manual log, CSV
-    timer-bar/       # sticky bottom timer status
-    command-palette/ # Ctrl/Cmd+K overlay
-    setup/           # first-run template chooser
-```
+## Project docs
 
-The pure logic in `services/budget.ts` and `services/csv.ts` is covered by
-Jasmine specs (`*.spec.ts`) so the budget rules and CSV escaping are pinned.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code is organised and how to extend it
+- [CHANGELOG.md](CHANGELOG.md): what changed between versions
+- [CLAUDE.md](CLAUDE.md): working notes for AI coding assistants
 
-## Roadmap (deliberately out of scope today)
+## Roadmap ideas
 
-- Charts and richer reports
-- External API integration / centralised sync
-- Optional encryption-at-rest
-- Idle detection and predictive burn-down
+- Hourly rates and invoicing reports
+- Idle detection / "you forgot to stop the timer"
+- Optional sync (e.g. via a user-provided WebDAV/S3 bucket) and encryption at rest
+- Reports view (per week / month / tag)
