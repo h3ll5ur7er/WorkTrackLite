@@ -49,4 +49,17 @@ describe('CommandPaletteComponent', () => {
     expect(nav).toHaveBeenCalledWith(['/manage', expect.any(String)]);
     expect(el.querySelector('[role=dialog]')).toBeNull();
   });
+
+  it('regression: focuses its input synchronously, so keys typed right after Ctrl+K are not lost', async () => {
+    const fixture = TestBed.createComponent(CommandPaletteComponent);
+    await fixture.whenStable();
+    document.body.appendChild(fixture.nativeElement);
+    // No await between the shortcut and the check: the browser delivers the next keystroke
+    // to whatever is focused at that moment, possibly before Angular's scheduled render.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input[role=combobox]');
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect(document.activeElement).toBe(input);
+    fixture.nativeElement.remove();
+  });
 });

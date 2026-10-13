@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { NAV_ITEMS } from '../../app.nav';
 import { BackupService } from '../../core/backup.service';
@@ -138,6 +148,7 @@ export class CommandPaletteComponent {
   private readonly backup = inject(BackupService);
   private readonly theme = inject(ThemeService);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly open = signal(false);
   readonly query = signal('');
@@ -146,7 +157,6 @@ export class CommandPaletteComponent {
   private returnFocus: HTMLElement | null = null;
 
   constructor() {
-    effect(() => this.input()?.nativeElement.focus());
     effect(() => {
       const i = this.active();
       if (this.open()) {
@@ -193,6 +203,10 @@ export class CommandPaletteComponent {
     this.query.set('');
     this.active.set(0);
     this.open.set(true);
+    // Render and focus *now*, inside the key/click handler. Waiting for the scheduled
+    // render lets the browser deliver the next keystrokes to <body>, losing them.
+    this.cdr.detectChanges();
+    this.input()?.nativeElement.focus();
   }
 
   close(): void {

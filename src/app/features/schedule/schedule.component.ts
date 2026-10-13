@@ -195,6 +195,8 @@ export class ScheduleComponent {
   protected onBlockPointerDown(ev: PointerEvent, seg: DaySegment, kind: DragState['kind']): void {
     if (ev.pointerType === 'mouse' && ev.button !== 0) return;
     ev.stopPropagation();
+    // A new gesture: forget a click suppression left over from a drag that ended elsewhere.
+    this.suppressClick = false;
     if (seg.entry.end == null) return; // running timers are not draggable
     ev.preventDefault();
     const target = ev.currentTarget as HTMLElement;

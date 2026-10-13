@@ -1,13 +1,20 @@
 import { Page, expect, test as base } from '@playwright/test';
 
-/** Fails any test that throws an uncaught error in the page. */
+/**
+ * Fails any test whose page throws an uncaught error or logs a console error.
+ * Angular catches many failures (e.g. router navigation errors) and only logs
+ * them, so uncaught errors alone are not enough.
+ */
 export const test = base.extend<{ pageErrors: string[] }>({
   pageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
-      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('pageerror', (e) => errors.push(`uncaught: ${e.message}`));
+      page.on('console', (m) => {
+        if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
+      });
       await use(errors);
-      expect(errors, 'uncaught errors in the page').toEqual([]);
+      expect(errors, 'errors in the page').toEqual([]);
     },
     { auto: true },
   ],
