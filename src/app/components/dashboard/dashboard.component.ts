@@ -1,9 +1,13 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Node, TimeEntry } from '../../data/models';
 import { DataService } from '../../services/data.service';
 import { TimerService } from '../../services/timer.service';
-import { descendantIds, indexChildren, reportForBudget, totalSeconds } from '../../services/budget';
+import {
+  descendantIds,
+  indexChildren,
+  reportForBudget,
+  totalSeconds,
+} from '../../services/budget';
 import { BurndownChartComponent } from '../burndown-chart/burndown-chart.component';
 
 interface DashboardCard {
@@ -21,7 +25,7 @@ interface DashboardCard {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, BurndownChartComponent],
+  imports: [BurndownChartComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -35,7 +39,9 @@ export class DashboardComponent {
 
   // Build the child map from non-archived nodes only, so a node whose only
   // children are archived is still treated as a leaf for dashboard purposes.
-  private readonly childrenByParent = computed(() => indexChildren(this.data.nodes().filter(n => !n.archived)));
+  private readonly childrenByParent = computed(() =>
+    indexChildren(this.data.nodes().filter((n) => !n.archived)),
+  );
 
   /** Entries indexed by nodeId for O(1) lookup, avoiding per-card full-table scans. */
   private readonly entriesIndex = computed(() => {
@@ -52,61 +58,65 @@ export class DashboardComponent {
   private readonly dashboardNodes = computed<Node[]>(() => {
     const all = this.data.nodes();
     const childMap = this.childrenByParent();
-    return all.filter(n => {
+    return all.filter((n) => {
       if (n.archived) return false;
-      const isLeaf = !(childMap.get(n.id)?.length);
+      const isLeaf = !childMap.get(n.id)?.length;
       return n.showInDashboard ?? isLeaf;
     });
   });
 
   readonly cards = computed<DashboardCard[]>(() => {
     const all = this.data.nodes();
-    const byId = new Map(all.map(n => [n.id, n] as const));
+    const byId = new Map(all.map((n) => [n.id, n] as const));
     const childMap = this.childrenByParent();
     const idx = this.entriesIndex();
     const now = this.timer.now();
     const running = this.timer.running();
     const q = this.query().trim().toLowerCase();
 
-    return this.dashboardNodes().map(node => {
-      // Build "Customer / Project / Phase / Task" path
-      const path: string[] = [];
-      let cur: Node | undefined = node;
-      while (cur) {
-        path.unshift(cur.name);
-        cur = cur.parentId ? byId.get(cur.parentId) : undefined;
-      }
-      // Aggregate tracked seconds across the whole subtree of this card,
-      // so a card with sub-tasks still reflects everything below it.
-      const ids = new Set(descendantIds(node.id, childMap));
-      const ents: TimeEntry[] = [];
-      for (const id of ids) {
-        const nodeEntries = idx.get(id);
-        if (nodeEntries) ents.push(...nodeEntries);
-      }
-      const r = reportForBudget(node.budget, totalSeconds(ents, now));
-      return {
-        node,
-        pathLabels: path.slice(0, -1),
-        trackedSeconds: r.trackedSeconds,
-        ratio: r.ratio,
-        overBudget: r.overBudget,
-        softBreached: r.softBreached,
-        remainingSeconds: r.remainingSeconds,
-        budgetSeconds: r.budgetSeconds,
-        budgetType: r.type,
-        isRunning: !!running && running.nodeId === node.id,
-      } as DashboardCard;
-    }).filter(c =>
-      !q ||
-      c.node.name.toLowerCase().includes(q) ||
-      c.pathLabels.join(' ').toLowerCase().includes(q)
-    ).sort((a, b) => {
-      // Running first, then over-budget, then by name
-      if (a.isRunning !== b.isRunning) return a.isRunning ? -1 : 1;
-      if (a.overBudget !== b.overBudget) return a.overBudget ? -1 : 1;
-      return a.node.name.localeCompare(b.node.name);
-    });
+    return this.dashboardNodes()
+      .map((node) => {
+        // Build "Customer / Project / Phase / Task" path
+        const path: string[] = [];
+        let cur: Node | undefined = node;
+        while (cur) {
+          path.unshift(cur.name);
+          cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+        }
+        // Aggregate tracked seconds across the whole subtree of this card,
+        // so a card with sub-tasks still reflects everything below it.
+        const ids = new Set(descendantIds(node.id, childMap));
+        const ents: TimeEntry[] = [];
+        for (const id of ids) {
+          const nodeEntries = idx.get(id);
+          if (nodeEntries) ents.push(...nodeEntries);
+        }
+        const r = reportForBudget(node.budget, totalSeconds(ents, now));
+        return {
+          node,
+          pathLabels: path.slice(0, -1),
+          trackedSeconds: r.trackedSeconds,
+          ratio: r.ratio,
+          overBudget: r.overBudget,
+          softBreached: r.softBreached,
+          remainingSeconds: r.remainingSeconds,
+          budgetSeconds: r.budgetSeconds,
+          budgetType: r.type,
+          isRunning: !!running && running.nodeId === node.id,
+        } as DashboardCard;
+      })
+      .filter(
+        (c) =>
+          !q ||
+          c.node.name.toLowerCase().includes(q) ||
+          c.pathLabels.join(' ').toLowerCase().includes(q),
+      )
+      .sort((a, b) => {
+        // Running first, then over-budget, then by name
+        if (a.isRunning !== b.isRunning) return a.isRunning ? -1 : 1;
+        if (a.overBudget !== b.overBudget) return a.overBudget ? -1 : 1;
+        return a.node.name.localeCompare(b.node.name);
+      });
   });
 
   readonly entriesByNode = computed(() => {
@@ -148,7 +158,9 @@ export class DashboardComponent {
     this.menu.set({ x: ev.clientX, y: ev.clientY, nodeId: card.node.id });
   }
 
-  closeMenu() { this.menu.set(null); }
+  closeMenu() {
+    this.menu.set(null);
+  }
 
   /** Emitted to parent so it can switch to manage view + select the node. */
   openInManage(nodeId: string) {

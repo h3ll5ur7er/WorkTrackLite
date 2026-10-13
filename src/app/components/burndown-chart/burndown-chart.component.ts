@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { Budget, TimeEntry } from '../../data/models';
 import { entryDurationSeconds } from '../../services/budget';
@@ -14,37 +13,93 @@ import { entryDurationSeconds } from '../../services/budget';
  */
 @Component({
   selector: 'app-burndown-chart',
-  imports: [CommonModule],
+  imports: [],
   template: `
-    <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" class="bd">
+    <svg
+      [attr.viewBox]="'0 0 ' + W + ' ' + H"
+      preserveAspectRatio="none"
+      class="bd"
+    >
       <!-- zero / target reference line -->
-      <line *ngIf="zeroY() !== null"
-            [attr.x1]="0" [attr.x2]="W"
-            [attr.y1]="zeroY()" [attr.y2]="zeroY()"
-            class="bd__zero" />
+      @if (zeroY() !== null) {
+        <line
+          [attr.x1]="0"
+          [attr.x2]="W"
+          [attr.y1]="zeroY()"
+          [attr.y2]="zeroY()"
+          class="bd__zero"
+        />
+      }
       <!-- soft limit reference line (per-hour / none mode) -->
-      <line *ngIf="softY() !== null"
-            [attr.x1]="0" [attr.x2]="W"
-            [attr.y1]="softY()" [attr.y2]="softY()"
-            class="bd__soft" />
+      @if (softY() !== null) {
+        <line
+          [attr.x1]="0"
+          [attr.x2]="W"
+          [attr.y1]="softY()"
+          [attr.y2]="softY()"
+          class="bd__soft"
+        />
+      }
       <!-- area under curve -->
-      <path *ngIf="areaPath()" [attr.d]="areaPath()" class="bd__area"
-            [class.bd__area--over]="overBudget()" />
+      @if (areaPath()) {
+        <path
+          [attr.d]="areaPath()"
+          class="bd__area"
+          [class.bd__area--over]="overBudget()"
+        />
+      }
       <!-- main line -->
-      <polyline *ngIf="linePoints()" [attr.points]="linePoints()" class="bd__line"
-                [class.bd__line--over]="overBudget()" />
+      @if (linePoints()) {
+        <polyline
+          [attr.points]="linePoints()"
+          class="bd__line"
+          [class.bd__line--over]="overBudget()"
+        />
+      }
     </svg>
   `,
-  styles: [`
-    :host { display: block; width: 100%; height: 100%; }
-    .bd { width: 100%; height: 100%; display: block; }
-    .bd__zero { stroke: var(--c-fg-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.5; }
-    .bd__soft { stroke: var(--c-warn); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0.6; }
-    .bd__line { fill: none; stroke: var(--c-accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-    .bd__line--over { stroke: var(--c-danger); }
-    .bd__area { fill: var(--c-accent); opacity: 0.15; }
-    .bd__area--over { fill: var(--c-danger); }
-  `],
+  styles: [
+    `
+      :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .bd {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .bd__zero {
+        stroke: var(--c-fg-3);
+        stroke-width: 1;
+        stroke-dasharray: 3 3;
+        opacity: 0.5;
+      }
+      .bd__soft {
+        stroke: var(--c-warn);
+        stroke-width: 1;
+        stroke-dasharray: 2 4;
+        opacity: 0.6;
+      }
+      .bd__line {
+        fill: none;
+        stroke: var(--c-accent);
+        stroke-width: 1.5;
+        vector-effect: non-scaling-stroke;
+      }
+      .bd__line--over {
+        stroke: var(--c-danger);
+      }
+      .bd__area {
+        fill: var(--c-accent);
+        opacity: 0.15;
+      }
+      .bd__area--over {
+        fill: var(--c-danger);
+      }
+    `,
+  ],
 })
 export class BurndownChartComponent {
   readonly entries = input<TimeEntry[]>([]);
@@ -57,7 +112,7 @@ export class BurndownChartComponent {
   /** Cumulative samples [{t, tracked}], including a final point at "now". */
   private readonly samples = computed(() => {
     const sorted = [...this.entries()]
-      .filter(e => e.start != null)
+      .filter((e) => e.start != null)
       .sort((a, b) => a.start - b.start);
     const out: Array<{ t: number; tracked: number }> = [];
     let acc = 0;
@@ -83,7 +138,7 @@ export class BurndownChartComponent {
     const tMin = s[0].t;
     const tMax = s[s.length - 1].t;
     const b = this.budget();
-    const maxTracked = Math.max(...s.map(p => p.tracked));
+    const maxTracked = Math.max(...s.map((p) => p.tracked));
     let yMin = 0;
     let yMax = 0;
     if (b.type === 'fixed') {
@@ -117,15 +172,27 @@ export class BurndownChartComponent {
   }
 
   readonly linePoints = computed(() =>
-    this.samples().map(p => `${this.toX(p.t).toFixed(2)},${this.yFor(p.tracked).toFixed(2)}`).join(' ')
+    this.samples()
+      .map(
+        (p) => `${this.toX(p.t).toFixed(2)},${this.yFor(p.tracked).toFixed(2)}`,
+      )
+      .join(' '),
   );
 
   readonly areaPath = computed(() => {
     const pts = this.samples();
     if (!pts.length) return '';
-    const baselineY = this.budget().type === 'fixed' ? this.toY(this.budget().seconds || 0) : this.toY(0);
+    const baselineY =
+      this.budget().type === 'fixed'
+        ? this.toY(this.budget().seconds || 0)
+        : this.toY(0);
     const head = `M ${this.toX(pts[0].t).toFixed(2)} ${baselineY.toFixed(2)}`;
-    const line = pts.map(p => `L ${this.toX(p.t).toFixed(2)} ${this.yFor(p.tracked).toFixed(2)}`).join(' ');
+    const line = pts
+      .map(
+        (p) =>
+          `L ${this.toX(p.t).toFixed(2)} ${this.yFor(p.tracked).toFixed(2)}`,
+      )
+      .join(' ');
     const tail = `L ${this.toX(pts[pts.length - 1].t).toFixed(2)} ${baselineY.toFixed(2)} Z`;
     return `${head} ${line} ${tail}`;
   });

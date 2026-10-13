@@ -1,5 +1,13 @@
-import { CommonModule } from '@angular/common';
-import { Component, AfterViewInit, Injector, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  AfterViewInit,
+  Injector,
+  ViewChild,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DataService } from './services/data.service';
 import { TreeComponent } from './components/tree/tree.component';
@@ -12,20 +20,19 @@ import { ScheduleComponent } from './components/schedule/schedule.component';
 import { AppView } from './data/models';
 
 @Component({
-    selector: 'app-root',
-    imports: [
-        CommonModule,
-        FormsModule,
-        TreeComponent,
-        NodeDetailComponent,
-        TimerBarComponent,
-        CommandPaletteComponent,
-        SetupComponent,
-        DashboardComponent,
-        ScheduleComponent,
-    ],
-    templateUrl: './app.component.html',
-    styleUrl: './app.component.scss'
+  selector: 'app-root',
+  imports: [
+    FormsModule,
+    TreeComponent,
+    NodeDetailComponent,
+    TimerBarComponent,
+    CommandPaletteComponent,
+    SetupComponent,
+    DashboardComponent,
+    ScheduleComponent,
+  ],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.scss',
 })
 export class AppComponent implements AfterViewInit {
   data = inject(DataService);
@@ -46,24 +53,31 @@ export class AppComponent implements AfterViewInit {
   newRootName = signal('');
   newRootKind = signal('');
 
-  readonly view = computed<AppView>(() => this.data.settings().view ?? 'dashboard');
+  readonly view = computed<AppView>(
+    () => this.data.settings().view ?? 'dashboard',
+  );
 
   readonly views: Array<{ id: AppView; label: string; icon: string }> = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦' },
-    { id: 'schedule', label: 'Schedule',   icon: '🗓' },
-    { id: 'manage',   label: 'Manage',     icon: '⚙' },
+    { id: 'schedule', label: 'Schedule', icon: '🗓' },
+    { id: 'manage', label: 'Manage', icon: '⚙' },
   ];
 
   ngAfterViewInit(): void {
-    if (this.paletteRef) this.paletteRef.selectNode = (id) => this.openInManage(id);
+    if (this.paletteRef)
+      this.paletteRef.selectNode = (id) => this.openInManage(id);
   }
 
-  setView(v: AppView) { void this.data.updateSettings({ view: v }); }
+  setView(v: AppView) {
+    void this.data.updateSettings({ view: v });
+  }
 
   openInManage(nodeId: string) {
     void this.data.updateSettings({ view: 'manage', lastNodeId: nodeId });
     // Wait for the Manage view to mount before selecting the node in the tree.
-    afterNextRender(() => this.treeRef?.select(nodeId), { injector: this.injector });
+    afterNextRender(() => this.treeRef?.select(nodeId), {
+      injector: this.injector,
+    });
   }
 
   toggleTheme(): void {
@@ -75,7 +89,7 @@ export class AppComponent implements AfterViewInit {
     const name = this.newRootName().trim();
     if (!name) return;
     const tplId = this.data.settings().templateId;
-    const tpl = this.data.templates().find(t => t.id === tplId);
+    const tpl = this.data.templates().find((t) => t.id === tplId);
     const kind = this.newRootKind().trim() || tpl?.levels[0] || 'Item';
     const id = await this.data.addNode({ parentId: null, name, kind });
     this.newRootName.set('');
@@ -84,5 +98,7 @@ export class AppComponent implements AfterViewInit {
     this.treeRef?.select(id);
   }
 
-  openPalette(): void { this.paletteRef?.openPalette(); }
+  openPalette(): void {
+    this.paletteRef?.openPalette();
+  }
 }
