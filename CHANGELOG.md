@@ -15,6 +15,10 @@
 - Colours: pick a colour per node (children inherit it) and per tag (Settings).
   Used for calendar blocks (with readable text), dashboard card stripes, tree
   dots and tag chips. Included in backups; only `#rrggbb` values are accepted.
+- Reports: this/last week, this/last month, last 30 days or a custom range,
+  optionally scoped to one customer/project; grouped by node (tree with
+  subtotals), by day (DST-safe, midnight-crossing entries split) or by tag.
+  Summary CSV and entries CSV (clipped to the range).
 
 ### Fixed
 

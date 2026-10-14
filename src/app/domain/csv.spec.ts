@@ -1,5 +1,5 @@
 import { makeEntry, makeNode } from '../testing/test-db';
-import { entriesToCsv } from './csv';
+import { entriesToCsv, tableToCsv } from './csv';
 
 describe('entriesToCsv', () => {
   const nodes = [makeNode({ id: 'a', name: 'Acme, Inc.', kind: 'Customer' }), makeNode({ id: 'b', parentId: 'a', name: 'Site' })];
@@ -39,5 +39,19 @@ describe('entriesToCsv', () => {
       .slice(1)
       .map((l) => l.split(',')[0]);
     expect(ids).toEqual(['early', 'late']);
+  });
+});
+
+describe('tableToCsv', () => {
+  it('quotes text, keeps numbers, and neutralises formulas', () => {
+    expect(
+      tableToCsv(
+        ['name', 'hours'],
+        [
+          ['Acme, Inc.', 1.5],
+          ['=cmd', 2],
+        ],
+      ),
+    ).toBe('name,hours\n"Acme, Inc.",1.5\n\'=cmd,2\n');
   });
 });

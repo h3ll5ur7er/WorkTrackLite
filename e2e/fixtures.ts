@@ -40,6 +40,7 @@ export interface SeedEntry {
   start: number;
   end: number | null;
   note?: string;
+  tags?: string[];
 }
 
 /** A backup file in the app's JSON format. */

@@ -18,6 +18,9 @@ src/app/
     storage.service.ts persistent-storage request + usage
     theme.service.ts   dark / light / system
     toast.service.ts   notifications with optional "Undo"
+    presence.service.ts  running timer in the tab title + app badge
+    idle.service.ts    forgotten-timer guard (localStorage heartbeat)
+    shortcut-actions.ts  #/action/:name for app-icon shortcuts
   domain/              pure functions, no Angular or DB: unit-test these
     time.ts            DST-safe calendar math (never add 24h to change days)
     tree.ts            TreeIndex (children, paths, subtrees) + time aggregation
@@ -27,8 +30,12 @@ src/app/
     schedule-layout.ts calendar segments, overlap lanes, snapping
     burndown.ts        dashboard chart geometry
     entries.ts         entry invariants (one running timer)
+    presence.ts        tab-title text for a running timer
+    idle.ts            when to ask about a forgotten timer
+    color.ts           palette, #rrggbb validation, readable text colour
+    reports.ts         date-range presets, clipping, group by node/day/tag
   features/            one folder per route (+ the first-run setup)
-    dashboard/  schedule/  manage/  settings/  setup/
+    dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command
                        palette, timer bar, toasts, long-press directive
   testing/             helpers for unit tests (fresh DB per test, factories)

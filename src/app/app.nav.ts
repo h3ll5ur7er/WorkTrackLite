@@ -2,6 +2,7 @@
 export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: '▦' },
   { path: '/schedule', label: 'Schedule', icon: '🗓' },
+  { path: '/reports', label: 'Reports', icon: '📊' },
   { path: '/manage', label: 'Manage', icon: '☰' },
   { path: '/settings', label: 'Settings', icon: '⚙' },
 ] as const;

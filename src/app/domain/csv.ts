@@ -45,3 +45,9 @@ export function entriesToCsv(entries: Iterable<TimeEntry>, nodes: readonly Node[
   }
   return rows.join('\n') + '\n';
 }
+
+/** Generic CSV for summary tables. Strings are treated as user text (formula-safe); numbers as-is. */
+export function tableToCsv(header: readonly string[], rows: readonly (readonly (string | number)[])[]): string {
+  const cell = (v: string | number) => (typeof v === 'number' ? String(v) : csvEscape(textCell(v)));
+  return [header.map((h) => csvEscape(h)).join(','), ...rows.map((r) => r.map(cell).join(','))].join('\n') + '\n';
+}
