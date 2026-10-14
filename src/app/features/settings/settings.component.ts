@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal
 import { DatePipe } from '@angular/common';
 import { BackupService } from '../../core/backup.service';
 import { DataService } from '../../core/data.service';
-import { ThemePreference } from '../../core/models';
+import { IdleService } from '../../core/idle.service';
+import { Settings, ThemePreference } from '../../core/models';
 import { StorageService } from '../../core/storage.service';
 import { ToastService } from '../../core/toast.service';
 import { BackupData } from '../../domain/backup';
@@ -106,6 +107,38 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
         </div>
       </section>
 
+      <section class="panel" aria-labelledby="s-idle">
+        <h2 id="s-idle">Forgotten-timer guard</h2>
+        <label class="check-row">
+          <input type="checkbox" [checked]="idle.settings().enabled" (change)="updateIdle({ idleGuard: $any($event.target).checked })" />
+          Ask when a timer kept running while the device slept or the app was closed, ran very long, or crossed midnight
+        </label>
+        @if (idle.settings().enabled) {
+          <div class="grid">
+            <label class="field">
+              <span>Away after (minutes)</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                [value]="idle.settings().awayMinutes"
+                (change)="updateIdle({ idleAwayMinutes: positive($any($event.target).valueAsNumber) })"
+              />
+            </label>
+            <label class="field">
+              <span>Ask after a timer runs (hours)</span>
+              <input
+                type="number"
+                min="1"
+                step="0.5"
+                [value]="idle.settings().longRunningHours"
+                (change)="updateIdle({ idleLongRunningHours: positive($any($event.target).valueAsNumber) })"
+              />
+            </label>
+          </div>
+        }
+      </section>
+
       @if (singleFileAvailable()) {
         <section class="panel" aria-labelledby="s-offline">
           <h2 id="s-offline">Offline copy</h2>
@@ -129,6 +162,12 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
       gap: 10px;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
+    .check-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
     .settings__confirm {
       margin-top: 12px;
       padding: 10px 12px;
@@ -141,6 +180,7 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
 export class SettingsComponent {
   protected readonly data = inject(DataService);
   protected readonly storage = inject(StorageService);
+  protected readonly idle = inject(IdleService);
   private readonly backup = inject(BackupService);
   private readonly toast = inject(ToastService);
 
@@ -220,6 +260,13 @@ export class SettingsComponent {
   }
   protected setWeekStart(weekStartsOn: number): Promise<void> {
     return this.data.updateSettings({ weekStartsOn });
+  }
+  protected updateIdle(patch: Partial<Pick<Settings, 'idleGuard' | 'idleAwayMinutes' | 'idleLongRunningHours'>>): Promise<void> {
+    return this.data.updateSettings(patch);
+  }
+  /** Positive number or undefined (falls back to the default). */
+  protected positive(v: number): number | undefined {
+    return Number.isFinite(v) && v > 0 ? v : undefined;
   }
   protected setTemplate(templateId: string): Promise<void> {
     return this.data.updateSettings({ templateId });

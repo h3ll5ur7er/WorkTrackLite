@@ -76,6 +76,12 @@ export interface Settings {
   weekStartsOn?: number;
   /** Epoch ms of the last JSON backup export. */
   lastBackupAt?: number;
+  /** Forgotten-timer guard (default on). */
+  idleGuard?: boolean;
+  /** Gap without the app running that counts as "away" (minutes, default 15). */
+  idleAwayMinutes?: number;
+  /** Ask once when a timer has run this long (hours, default 8). */
+  idleLongRunningHours?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = { id: 'app', theme: 'system', weekStartsOn: 1 };

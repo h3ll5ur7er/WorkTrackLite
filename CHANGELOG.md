@@ -8,6 +8,10 @@
   `▶ 1:02:03 Design · …`, and the installed app gets an icon badge.
 - App-icon shortcuts (long-press the installed app): Resume last timer, Stop
   timer, Schedule. They open `#/action/resume|stop`.
+- Forgotten-timer guard: when the app comes back after the device slept or was
+  closed with a timer running (15 min+), or a timer ran 8 h+ or past midnight,
+  a dialog offers to remove the away time and keep timing, stop at a chosen
+  time, or keep it. Undoable; thresholds and an off switch are in Settings.
 
 ### Fixed
 
