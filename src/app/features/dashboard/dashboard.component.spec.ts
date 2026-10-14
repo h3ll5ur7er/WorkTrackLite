@@ -70,4 +70,26 @@ describe('DashboardComponent', () => {
     const items = [...el.querySelectorAll('[role=menuitem]')].map((b) => b.textContent?.trim());
     expect(items).toEqual(['Start timer', 'Log time…', 'Open in Manage', 'Hide from dashboard']);
   });
+
+  // Keys pressed right after opening go to whatever is focused at that moment, which can be
+  // before Angular's scheduled render. So these checks deliberately do not await anything.
+  it('regression: the ⋯ menu has focus synchronously after opening', async () => {
+    const { el } = await render();
+    const more = el.querySelector<HTMLButtonElement>('button[aria-label="More actions for Website"]')!;
+    more.focus();
+    more.click();
+    const first = el.querySelector('[role=menuitem]');
+    expect(first).toBeInstanceOf(HTMLButtonElement);
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('regression: "Log time…" opens the editor with focus in it, synchronously', async () => {
+    const { el } = await render();
+    el.querySelector<HTMLButtonElement>('button[aria-label="More actions for Website"]')!.click();
+    const logTime = [...el.querySelectorAll<HTMLButtonElement>('[role=menuitem]')].find((b) => b.textContent?.includes('Log time'))!;
+    logTime.click();
+    const dialog = el.querySelector('[role=dialog]');
+    expect(dialog).toBeTruthy();
+    expect(dialog!.contains(document.activeElement)).toBe(true);
+  });
 });

@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { renderNow } from '../../shared/render-now';
 import { DataService } from '../../core/data.service';
 import { Budget, BudgetType, Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
@@ -9,7 +10,7 @@ import { entryDurationSeconds, reportForBudget } from '../../domain/budget';
 import { entriesToCsv } from '../../domain/csv';
 import { formatHMS, parseTags } from '../../domain/format';
 import { MS_PER_HOUR } from '../../domain/time';
-import { liveSubtreeSeconds } from '../../domain/tree';
+import { liveSubtreeSeconds, reorderSiblings } from '../../domain/tree';
 import { downloadFile, safeFileName } from '../../shared/download';
 import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
 
@@ -22,6 +23,7 @@ import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.c
 })
 export class NodeDetailComponent {
   private readonly data = inject(DataService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly timer = inject(TimerService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -86,14 +88,13 @@ export class NodeDetailComponent {
 
   protected readonly isRunningHere = computed(() => this.timer.running()?.nodeId === this.node()?.id);
 
+  /** Whether "Move up"/"Move down" can do anything (same rule the service applies). */
   protected readonly siblingPosition = computed(() => {
     const n = this.node();
     if (!n) return { first: true, last: true };
-    const siblings = this.tree().childrenOf(n.parentId != null && this.tree().get(n.parentId) ? n.parentId : null, {
-      includeArchived: true,
-    });
-    const idx = siblings.findIndex((s) => s.id === n.id);
-    return { first: idx <= 0, last: idx === siblings.length - 1 };
+    const tree = this.tree();
+    const siblings = tree.childrenOf(tree.get(n.parentId) ? n.parentId : null, { includeArchived: true });
+    return { first: !reorderSiblings(siblings, n.id, -1), last: !reorderSiblings(siblings, n.id, 1) };
   });
 
   protected readonly parentOptions = computed(() => {
@@ -213,12 +214,12 @@ export class NodeDetailComponent {
     const n = this.node();
     if (!n) return;
     const end = Math.floor(Date.now() / 900_000) * 900_000;
-    this.editor.set({ nodeId: n.id, start: end - MS_PER_HOUR, end, note: '' });
+    this.showEditor({ nodeId: n.id, start: end - MS_PER_HOUR, end, note: '' });
   }
 
   protected editEntry(e: TimeEntry): void {
     if (e.end == null) return;
-    this.editor.set({ id: e.id, nodeId: e.nodeId, start: e.start, end: e.end, note: e.note, tags: e.tags });
+    this.showEditor({ id: e.id, nodeId: e.nodeId, start: e.start, end: e.end, note: e.note, tags: e.tags });
   }
 
   protected async saveEntry(d: EntryDraft): Promise<void> {
@@ -254,5 +255,11 @@ export class NodeDetailComponent {
 
   protected entrySeconds(e: TimeEntry): number {
     return entryDurationSeconds(e, this.timer.now());
+  }
+
+  /** Opens the entry editor and renders it now, so it has focus before the next keystroke. */
+  private showEditor(draft: EntryDraft): void {
+    this.editor.set(draft);
+    renderNow(this.cdr);
   }
 }

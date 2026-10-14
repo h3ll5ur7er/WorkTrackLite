@@ -165,3 +165,23 @@ export function liveSubtreeSeconds(
   }
   return s;
 }
+
+/**
+ * New sibling order after moving `id` one visible step up (-1) or down (+1),
+ * or null when it cannot move. "Visible" means what the tree shows: archived
+ * siblings are hidden by default, so a non-archived node jumps over them;
+ * otherwise "Move up" could appear to do nothing.
+ */
+export function reorderSiblings(siblings: readonly Node[], id: string, direction: -1 | 1): Node[] | null {
+  const idx = siblings.findIndex((s) => s.id === id);
+  if (idx < 0) return null;
+  const node = siblings[idx];
+  const passable = (s: Node) => node.archived || !s.archived;
+  let target = idx + direction;
+  while (target >= 0 && target < siblings.length && !passable(siblings[target])) target += direction;
+  if (target < 0 || target >= siblings.length) return null;
+  const rest = siblings.filter((s) => s.id !== id);
+  const targetIdx = rest.findIndex((s) => s.id === siblings[target].id);
+  rest.splice(direction < 0 ? targetIdx : targetIdx + 1, 0, node);
+  return rest;
+}

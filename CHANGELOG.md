@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Keys pressed right after opening a context menu or the entry editor could be
+  lost: both now render and take focus inside the triggering event (as the
+  command palette already did since 0.2.0), via `shared/render-now.ts`.
+- After a long-press on a touch screen, the next real tap could be swallowed if
+  the browser never sent the finger-lift click. Click suppression now ends as
+  soon as a new touch starts.
+- "Move up/down" did nothing visible when the neighbouring sibling was archived
+  (and therefore hidden); it now skips hidden siblings.
+
 ## 0.2.0 (2026-10)
 
 A renovation of the original prototype.

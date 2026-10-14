@@ -1,8 +1,8 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  afterNextRender,
   computed,
   inject,
   input,
@@ -195,7 +195,7 @@ export interface EntryDraft {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EntryEditorComponent {
+export class EntryEditorComponent implements AfterViewInit {
   private readonly data = inject(DataService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
@@ -208,8 +208,9 @@ export class EntryEditorComponent {
   protected readonly form = linkedSignal(() => ({ ...this.draft() }));
   protected readonly parseTags = parseTags;
 
-  constructor() {
-    afterNextRender(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('select, input')?.focus());
+  /** Focus as soon as the view exists; openers render synchronously (see `renderNow`). */
+  ngAfterViewInit(): void {
+    (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('select, input')?.focus();
   }
 
   protected readonly nodeOptions = computed(() => {

@@ -94,6 +94,19 @@ test.describe('schedule', () => {
     expect(pasted.start).toBe(zurich('2026-10-22T15:00'));
   });
 
+  test('keyboard: menu keys pressed immediately after opening are not lost', async ({ page }) => {
+    const start = zurich('2026-10-20T09:00');
+    await seed(page, backupJson(ACME, [{ id: 'e1', nodeId: 'design', start, end: start + H }]));
+    await page.goto('/#/schedule');
+    await page.locator('[data-entry-id="e1"]').focus();
+    // No waiting between keys: Edit… → (ArrowDown) Duplicate → Enter.
+    await page.keyboard.press('Shift+F10');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await readStore<Entry>(page, 'entries')).length).toBe(2);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
   test('a running timer is drawn live up to now', async ({ page }) => {
     const start = zurich('2026-10-20T08:00');
     await seed(page, backupJson(ACME, [{ id: 'run', nodeId: 'app', start, end: null }]));

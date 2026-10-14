@@ -52,18 +52,22 @@ export class LongPressDirective {
 
 /**
  * Lifting the finger after a long press produces a click — on whatever is now
- * under it (often the backdrop of the menu that just opened). Swallow it once.
+ * under it (often the backdrop of the menu that just opened). Swallow that one
+ * click, but stop as soon as a new gesture starts, so a real tap is never lost
+ * when the browser does not send the finger-lift click.
  */
-export function swallowNextClick(windowMs = 800): void {
-  const handler = (ev: Event) => {
+export function swallowNextClick(windowMs = 1000): void {
+  const swallow = (ev: Event) => {
     ev.stopPropagation();
     ev.preventDefault();
     done();
   };
   const done = () => {
-    window.removeEventListener('click', handler, true);
+    window.removeEventListener('click', swallow, true);
+    window.removeEventListener('pointerdown', done, true);
     clearTimeout(timer);
   };
   const timer = setTimeout(done, windowMs);
-  window.addEventListener('click', handler, true);
+  window.addEventListener('click', swallow, true);
+  window.addEventListener('pointerdown', done, true);
 }

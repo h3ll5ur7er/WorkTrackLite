@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, liveQuery } from 'dexie';
 import { BackupData } from '../domain/backup';
-import { TreeIndex, closedSubtreeSeconds, entriesByNode } from '../domain/tree';
+import { TreeIndex, closedSubtreeSeconds, entriesByNode, reorderSiblings } from '../domain/tree';
 import { WORKTRACK_DB, uid } from './db';
 import { Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from './models';
 import { BUILTIN_TEMPLATES } from './templates';
@@ -156,22 +156,18 @@ export class DataService {
     });
   }
 
-  /** Swaps a node with its previous (-1) or next (+1) visible sibling. */
+  /** Moves a node one visible step up (-1) or down (+1) among its siblings. */
   async reorderNode(id: string, direction: -1 | 1): Promise<void> {
     await this.db.transaction('rw', this.db.nodes, async () => {
       const tree = new TreeIndex(await this.db.nodes.toArray());
       const node = tree.get(id);
       if (!node) return;
-      const siblings = tree.childrenOf(node.parentId != null && tree.get(node.parentId) ? node.parentId : null, {
-        includeArchived: true,
-      });
-      const idx = siblings.findIndex((s) => s.id === id);
-      const target = idx + direction;
-      if (idx < 0 || target < 0 || target >= siblings.length) return;
-      [siblings[idx], siblings[target]] = [siblings[target], siblings[idx]];
-      // Renumber so equal/legacy order values cannot make the swap a no-op.
+      const siblings = tree.childrenOf(tree.get(node.parentId) ? node.parentId : null, { includeArchived: true });
+      const reordered = reorderSiblings(siblings, id, direction);
+      if (!reordered) return;
+      // Renumber everything so equal/legacy order values cannot make the move a no-op.
       const now = Date.now();
-      await Promise.all(siblings.map((s, i) => (s.order === i ? null : this.db.nodes.update(s.id, { order: i, updatedAt: now }))));
+      await Promise.all(reordered.map((s, i) => (s.order === i ? null : this.db.nodes.update(s.id, { order: i, updatedAt: now }))));
     });
   }
 

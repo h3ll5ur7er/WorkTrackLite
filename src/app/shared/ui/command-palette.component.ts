@@ -13,6 +13,7 @@ import { Router } from '@angular/router';
 import { NAV_ITEMS } from '../../app.nav';
 import { BackupService } from '../../core/backup.service';
 import { DataService } from '../../core/data.service';
+import { renderNow } from '../render-now';
 import { ThemeService } from '../../core/theme.service';
 import { TimerService } from '../../core/timer.service';
 
@@ -203,9 +204,7 @@ export class CommandPaletteComponent {
     this.query.set('');
     this.active.set(0);
     this.open.set(true);
-    // Render and focus *now*, inside the key/click handler. Waiting for the scheduled
-    // render lets the browser deliver the next keystrokes to <body>, losing them.
-    this.cdr.detectChanges();
+    renderNow(this.cdr);
     this.input()?.nativeElement.focus();
   }
 

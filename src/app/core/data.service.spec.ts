@@ -51,6 +51,21 @@ describe('DataService', () => {
     ).toEqual([b, a]);
   });
 
+  it('regression: moving up jumps over a hidden archived sibling', async () => {
+    const a = await data.addNode({ parentId: null, name: 'A', kind: 'K' });
+    const b = await data.addNode({ parentId: null, name: 'B', kind: 'K' });
+    const c = await data.addNode({ parentId: null, name: 'C', kind: 'K' });
+    await data.setArchived(b, true);
+    await data.reorderNode(c, -1);
+    await waitFor(() => data.tree().roots()[0]?.id === c);
+    expect(
+      data
+        .tree()
+        .roots()
+        .map((n) => n.id),
+    ).toEqual([c, a]);
+  });
+
   it('moves nodes but refuses to create cycles', async () => {
     const a = await data.addNode({ parentId: null, name: 'A', kind: 'K' });
     const b = await data.addNode({ parentId: a, name: 'B', kind: 'K' });
