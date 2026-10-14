@@ -62,6 +62,24 @@
       </div>
     </header>
 
+    @if (selecting()) {
+      <div class="sched__selection" role="toolbar" aria-label="Selected entries">
+        <span class="sched__selection-count" data-testid="selection-count" aria-live="polite"
+          >{{ selectedEntries().length }} selected · {{ formatHM(selectedSeconds()) }}</span
+        >
+        <label class="visually-hidden" for="sched-move-to">Move selected entries to</label>
+        <select id="sched-move-to" class="input" (change)="reassignSelection($any($event.target))">
+          <option value="">Move to…</option>
+          @for (n of assignableNodes(); track n.id) {
+            <option [value]="n.id">{{ n.label }}</option>
+          }
+        </select>
+        <button type="button" class="btn" (click)="mergeSelection()">Merge</button>
+        <button type="button" class="btn btn--danger" (click)="deleteSelection()">Delete</button>
+        <button type="button" class="btn btn--ghost" (click)="clearSelection()" title="Clear selection (Esc)">Done</button>
+      </div>
+    }
+
     <div class="sched__day-row">
       <div class="sched__gutter-spacer"></div>
       @for (d of days(); track d.ms) {
@@ -113,6 +131,8 @@
                 [class.block--running]="seg.entry.end === null"
                 [class.block--overlap]="seg.overlap"
                 [class.block--dragging]="isPreviewing(seg)"
+                [class.block--selected]="isSelected(seg.entry.id)"
+                [attr.aria-pressed]="selecting() && seg.entry.end !== null ? isSelected(seg.entry.id) : null"
                 [style.top.%]="(seg.topMin / 1440) * 100"
                 [style.height.%]="(seg.heightMin / 1440) * 100"
                 [style.left.%]="(100 / seg.laneCount) * seg.lane"

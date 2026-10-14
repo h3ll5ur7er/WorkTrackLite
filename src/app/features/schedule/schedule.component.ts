@@ -18,7 +18,8 @@ import { Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
 import { readableTextColor } from '../../domain/color';
-import { formatClock, formatRange } from '../../domain/format';
+import { mergeNeighbors, midpoint, shiftEntry } from '../../domain/entry-edit';
+import { formatClock, formatHM, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
 import { ScheduleView, ScheduleViewSetting, VIEW_DAYS, alignStart, resolveView, stepStart } from '../../domain/schedule-view';
 import {
@@ -43,6 +44,8 @@ const LONG_PRESS_MS = 500;
 const HOUR_HEIGHT_PX = 56;
 const DRAG_MIME = 'application/x-worktrack-node';
 const VIEW_KEY = 'worktracklite.scheduleView';
+/** Pointer-picked split points snap to this. */
+const SPLIT_SNAP_MIN = 5;
 
 function readViewSetting(): ScheduleViewSetting {
   try {
@@ -57,6 +60,8 @@ function readViewSetting(): ScheduleViewSetting {
 interface DragState {
   kind: 'move' | 'resize-start' | 'resize-end';
   entry: TimeEntry;
+  /** Entries that move together: the selection when dragging a selected block, else just `entry`. */
+  group: TimeEntry[];
   pointerId: number;
   startX: number;
   startY: number;
@@ -66,11 +71,16 @@ interface DragState {
   longPress: ReturnType<typeof setTimeout> | null;
 }
 
-type MenuState = { x: number; y: number } & ({ entry: TimeEntry } | { dayStart: number; minutes: number });
+/** `at`: the time under the pointer when the menu was opened on an entry (split point). */
+type MenuState = { x: number; y: number } & ({ entry: TimeEntry; at?: number | null } | { dayStart: number; minutes: number });
+interface Range {
+  start: number;
+  end: number;
+}
 
 @Component({
   selector: 'app-schedule',
-  host: { '(window:resize)': 'onResize()' },
+  host: { '(window:resize)': 'onResize()', '(document:keydown.escape)': 'onEscape($event)' },
   imports: [NgTemplateOutlet, EntryEditorComponent, ContextMenuComponent, LongPressDirective],
   templateUrl: './schedule.component.html',
   styleUrl: './schedule.component.scss',
@@ -86,6 +96,7 @@ export class ScheduleComponent {
   protected readonly dayHeightPx = 24 * HOUR_HEIGHT_PX;
   protected readonly formatRange = formatRange;
   protected readonly formatClock = formatClock;
+  protected readonly formatHM = formatHM;
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   private readonly weekStartsOn = computed(() => this.data.settings().weekStartsOn ?? 1);
@@ -126,7 +137,8 @@ export class ScheduleComponent {
   private rafId = 0;
   /** Set after a drag so the click that follows pointerup does not open the editor. */
   private suppressClick = false;
-  protected readonly preview = signal<{ id: string; start: number; end: number } | null>(null);
+  /** Live positions of the entries being dragged, by id. */
+  protected readonly preview = signal<ReadonlyMap<string, Range> | null>(null);
 
   // --- Sidebar drag (HTML5 DnD) ------------------------------------------------
   protected readonly dragNodeId = signal<string | null>(null);
@@ -142,8 +154,8 @@ export class ScheduleComponent {
     return layoutWeek(
       this.data.entries(),
       this.days().map((d) => d.ms),
-      (e) => (p?.id === e.id ? p.end : (e.end ?? Math.max(now, e.start + MS_PER_MINUTE))),
-      (e) => (p?.id === e.id ? p.start : e.start),
+      (e) => p?.get(e.id)?.end ?? e.end ?? Math.max(now, e.start + MS_PER_MINUTE),
+      (e) => p?.get(e.id)?.start ?? e.start,
     );
   });
 
@@ -229,16 +241,14 @@ export class ScheduleComponent {
     return this.data.tree().pathNames(e.nodeId).slice(0, -1).join(' / ');
   }
   protected segEnd(seg: DaySegment): number {
-    const p = this.preview();
-    if (p?.id === seg.entry.id) return p.end;
-    return seg.entry.end ?? this.timer.minute();
+    return this.preview()?.get(seg.entry.id)?.end ?? seg.entry.end ?? this.timer.minute();
   }
   protected segStart(seg: DaySegment): number {
-    const p = this.preview();
-    return p?.id === seg.entry.id ? p.start : seg.entry.start;
+    return this.preview()?.get(seg.entry.id)?.start ?? seg.entry.start;
   }
   protected blockLabel(seg: DaySegment): string {
-    return `${this.nodeName(seg.entry)}, ${formatRange(this.segStart(seg), this.segEnd(seg))}${seg.entry.end == null ? ', running' : ''}`;
+    const state = seg.entry.end == null ? ', running' : this.isSelected(seg.entry.id) ? ', selected' : '';
+    return `${this.nodeName(seg.entry)}, ${formatRange(this.segStart(seg), this.segEnd(seg))}${state}`;
   }
 
   /** Wall-clock minutes (snapped) for a pointer position inside a day column. */
@@ -246,6 +256,13 @@ export class ScheduleComponent {
     const rect = col.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
     return Math.min(MINUTES_PER_DAY - stepMin, Math.round((ratio * MINUTES_PER_DAY) / stepMin) * stepMin);
+  }
+
+  /** The time under the pointer inside a block's day column (for "Split at"). */
+  private timeAt(clientY: number, el: Element): number | null {
+    const col = el.closest<HTMLElement>('.sched__col');
+    const day = col ? this.days()[Number(col.dataset['day'])] : undefined;
+    return col && day ? atWallClockMinutes(day.ms, this.minutesAt(clientY, col, SPLIT_SNAP_MIN)) : null;
   }
 
   // --- Block pointer interaction ------------------------------------------------------
@@ -259,9 +276,12 @@ export class ScheduleComponent {
     ev.preventDefault();
     const target = ev.currentTarget as HTMLElement;
     const col = target.closest('.sched__col') as HTMLElement | null;
+    const sel = this.selectedEntries();
+    const group = kind === 'move' && this.isSelected(seg.entry.id) ? sel : [seg.entry];
     this.drag = {
       kind,
       entry: seg.entry,
+      group,
       pointerId: ev.pointerId,
       startX: ev.clientX,
       startY: ev.clientY,
@@ -276,7 +296,7 @@ export class ScheduleComponent {
               const { startX, startY } = this.drag ?? { startX: 0, startY: 0 };
               this.endDrag();
               swallowNextClick();
-              if (entry) this.openMenu({ x: startX, y: startY, entry });
+              if (entry) this.openMenu({ x: startX, y: startY, entry, at: this.timeAt(startY, target) });
             }, LONG_PRESS_MS),
     };
     target.setPointerCapture?.(ev.pointerId);
@@ -308,12 +328,18 @@ export class ScheduleComponent {
     if (!d || ev.pointerId !== d.pointerId) return;
     // Apply the final position synchronously; a pending frame must not run after we clear state.
     if (d.moved) this.applyDrag(d, ev);
-    const result = this.preview();
+    const result = this.preview()?.get(d.entry.id);
+    const moves = this.preview();
     this.endDrag();
-    if (!d.moved || !result) return;
+    if (!d.moved || !result || !moves) return;
     this.suppressClick = true;
     if (result.start === d.entry.start && result.end === d.entry.end) return;
     try {
+      if (d.group.length > 1) {
+        const before = await this.data.updateEntries([...moves.keys()], (e) => moves.get(e.id)!);
+        this.toast.show(`Moved ${before.length} entries`, { action: { label: 'Undo', run: () => this.data.restoreEntries(before) } });
+        return;
+      }
       await this.data.updateEntry(d.entry.id, { start: result.start, end: result.end });
       this.toast.show(`Moved to ${formatRange(result.start, result.end)}`, {
         action: { label: 'Undo', run: () => this.data.updateEntry(d.entry.id, { start: d.entry.start, end: d.entry.end }) },
@@ -349,21 +375,28 @@ export class ScheduleComponent {
     let start = s0;
     let end = e0;
     if (d.kind === 'move') {
+      // Whole days plus a snapped offset, applied the same way to every entry in the group.
       const dayShift = Math.round((ev.clientX - d.startX) / Math.max(1, d.colWidth));
-      start = snap(addDays(s0, dayShift) + dtMs);
-      end = start + (e0 - s0);
+      const offset = snap(addDays(s0, dayShift) + dtMs) - addDays(s0, dayShift);
+      this.preview.set(new Map(d.group.map((e) => [e.id, shiftEntry(e, dayShift, offset)])));
+      return;
     } else if (d.kind === 'resize-start') {
       start = Math.min(snap(s0 + dtMs), e0 - minLen);
     } else {
       end = Math.max(snap(e0 + dtMs), s0 + minLen);
     }
-    this.preview.set({ id: d.entry.id, start, end });
+    this.preview.set(new Map([[d.entry.id, { start, end }]]));
   }
 
   protected onBlockClick(ev: MouseEvent, seg: DaySegment): void {
     ev.stopPropagation();
     if (this.suppressClick) {
       this.suppressClick = false;
+      return;
+    }
+    // Ctrl/Cmd/Shift-click selects; once something is selected, plain clicks and taps select too.
+    if (seg.entry.end != null && (ev.ctrlKey || ev.metaKey || ev.shiftKey || this.selecting())) {
+      this.toggleSelected(seg.entry);
       return;
     }
     this.activate(seg.entry, ev.clientX, ev.clientY);
@@ -374,13 +407,15 @@ export class ScheduleComponent {
     const r = el.getBoundingClientRect();
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
-      this.activate(seg.entry, r.left, r.top);
+      if (seg.entry.end != null && (ev.ctrlKey || ev.metaKey || ev.shiftKey || this.selecting())) this.toggleSelected(seg.entry);
+      else this.activate(seg.entry, r.left, r.top);
     } else if (ev.key === 'ContextMenu' || (ev.shiftKey && ev.key === 'F10')) {
       ev.preventDefault();
       this.openMenu({ x: r.left, y: r.top, entry: seg.entry });
     } else if (ev.key === 'Delete' || ev.key === 'Backspace') {
       ev.preventDefault();
-      if (seg.entry.end != null) void this.deleteEntry(seg.entry.id);
+      if (this.isSelected(seg.entry.id)) void this.deleteSelection();
+      else if (seg.entry.end != null) void this.deleteEntry(seg.entry.id);
     }
   }
 
@@ -392,7 +427,7 @@ export class ScheduleComponent {
   protected onBlockContext(ev: MouseEvent, seg: DaySegment): void {
     ev.preventDefault();
     ev.stopPropagation();
-    this.openMenu({ x: ev.clientX, y: ev.clientY, entry: seg.entry });
+    this.openMenu({ x: ev.clientX, y: ev.clientY, entry: seg.entry, at: this.timeAt(ev.clientY, ev.currentTarget as HTMLElement) });
   }
 
   // --- Column interaction -------------------------------------------------------------
@@ -411,12 +446,23 @@ export class ScheduleComponent {
     if ('entry' in m) {
       const e = m.entry;
       if (e.end == null) return [{ label: 'Stop timer', run: () => this.timer.stop() }];
-      return [
+      const splitAt = m.at != null && m.at > e.start && m.at < e.end ? m.at : null;
+      const half = midpoint(e);
+      const { prev, next } = mergeNeighbors(this.data.entries(), e);
+      const items: MenuItem[] = [
         { label: 'Edit…', run: () => this.openEditor(e) },
         { label: 'Duplicate', run: () => this.paste(e, e.end!, true) },
         { label: 'Copy', run: () => this.clipboard.set({ ...e }) },
-        { label: 'Delete', danger: true, run: () => this.deleteEntry(e.id) },
       ];
+      if (splitAt != null) items.push({ label: `Split at ${formatClock(splitAt)}`, run: () => this.split(e, splitAt) });
+      else if (half != null) items.push({ label: 'Split in half', run: () => this.split(e, half) });
+      if (prev) items.push({ label: 'Merge with previous', run: () => this.merge([prev.id, e.id]) });
+      if (next) items.push({ label: 'Merge with next', run: () => this.merge([e.id, next.id]) });
+      items.push(
+        { label: this.isSelected(e.id) ? 'Deselect' : 'Select', run: () => this.toggleSelected(e) },
+        { label: 'Delete', danger: true, run: () => this.deleteEntry(e.id) },
+      );
+      return items;
     }
     const at = atWallClockMinutes(m.dayStart, m.minutes);
     const cb = this.clipboard();
@@ -440,6 +486,103 @@ export class ScheduleComponent {
     const removed = await this.data.deleteEntry(id);
     this.editor.set(null);
     if (removed) this.toast.show('Entry deleted', { action: { label: 'Undo', run: () => this.data.restoreEntries([removed]) } });
+  }
+
+  // --- Split / merge -----------------------------------------------------------------
+
+  private async split(e: TimeEntry, at: number): Promise<void> {
+    try {
+      const { original, newId } = await this.data.splitEntry(e.id, at);
+      this.toast.show(`Split at ${formatClock(at)}`, {
+        action: { label: 'Undo', run: () => this.data.revertEntries([original], [newId]) },
+      });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  private async merge(ids: string[]): Promise<boolean> {
+    try {
+      const { originals, gapMs } = await this.data.mergeEntries(ids);
+      const gap = gapMs ? ` (adds ${formatHM(gapMs / 1000)} between them)` : '';
+      this.toast.show(`Merged ${originals.length} entries${gap}`, {
+        action: { label: 'Undo', run: () => this.data.revertEntries(originals, []) },
+      });
+      return true;
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+      return false;
+    }
+  }
+
+  // --- Selection -----------------------------------------------------------------------
+
+  protected readonly selected = signal<ReadonlySet<string>>(new Set());
+  /** Selected entries that still exist (others may have been deleted meanwhile). */
+  protected readonly selectedEntries = computed(() => this.data.entries().filter((e) => this.selected().has(e.id) && e.end != null));
+  protected readonly selecting = computed(() => this.selectedEntries().length > 0);
+  protected readonly selectedSeconds = computed(() => this.selectedEntries().reduce((s, e) => s + (e.end! - e.start) / 1000, 0));
+  /** Targets for "Move to": every node not archived, with its path. */
+  protected readonly assignableNodes = computed(() => {
+    const tree = this.data.tree();
+    return tree.nodes
+      .filter((n) => !n.archived && !tree.hasArchivedAncestor(n.id))
+      .map((n) => ({ id: n.id, label: tree.pathLabel(n.id) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+
+  protected isSelected(id: string): boolean {
+    return this.selected().has(id);
+  }
+
+  protected toggleSelected(e: TimeEntry): void {
+    if (e.end == null) return;
+    const next = new Set(this.selectedEntries().map((x) => x.id));
+    if (!next.delete(e.id)) next.add(e.id);
+    this.selected.set(next);
+  }
+
+  protected clearSelection(): void {
+    this.selected.set(new Set());
+  }
+
+  protected onEscape(ev: Event): void {
+    // A menu or dialog handles its own Escape first (and marks it handled).
+    if (ev.defaultPrevented || this.menu() || this.editor()) return;
+    this.clearSelection();
+  }
+
+  protected async reassignSelection(select: HTMLSelectElement): Promise<void> {
+    const nodeId = select.value;
+    select.value = '';
+    if (!nodeId) return;
+    try {
+      const before = await this.data.updateEntries(
+        this.selectedEntries().map((e) => e.id),
+        () => ({ nodeId }),
+      );
+      this.toast.show(`Moved ${before.length} entries to ${this.data.tree().get(nodeId)?.name ?? 'node'}`, {
+        action: { label: 'Undo', run: () => this.data.restoreEntries(before) },
+      });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  protected async mergeSelection(): Promise<void> {
+    if (await this.merge(this.selectedEntries().map((e) => e.id))) this.clearSelection();
+  }
+
+  protected async deleteSelection(): Promise<void> {
+    try {
+      const removed = await this.data.deleteEntries(this.selectedEntries().map((e) => e.id));
+      this.clearSelection();
+      this.toast.show(`Deleted ${removed.length} ${removed.length === 1 ? 'entry' : 'entries'}`, {
+        action: { label: 'Undo', run: () => this.data.restoreEntries(removed) },
+      });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
   }
 
   // --- Editor ----------------------------------------------------------------------
@@ -504,7 +647,7 @@ export class ScheduleComponent {
   }
 
   protected isPreviewing(seg: DaySegment): boolean {
-    return this.preview()?.id === seg.entry.id;
+    return this.preview()?.has(seg.entry.id) ?? false;
   }
 
   /** Opens a menu and renders it now, so it has focus before the next keystroke. */

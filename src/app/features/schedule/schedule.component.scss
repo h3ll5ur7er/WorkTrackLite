@@ -94,6 +94,22 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--c-border);
 }
+.sched__selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-accent-bg);
+}
+.sched__selection-count {
+  font-variant-numeric: tabular-nums;
+  margin-right: auto;
+}
+.sched__selection select {
+  max-width: 14rem;
+}
 .sched__nav {
   display: flex;
   gap: 4px;
@@ -256,6 +272,12 @@
   &--dragging {
     z-index: 4;
     box-shadow: 0 4px 16px var(--c-shadow);
+  }
+  &--selected {
+    z-index: 3;
+    outline: 2px solid var(--c-fg);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 3px var(--c-bg) inset;
   }
 }
 .block__inner {

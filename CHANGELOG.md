@@ -27,6 +27,12 @@
 - Schedule views: Day, 3 days or Week, or Auto (day on phones, 3 days on
   narrow windows, week otherwise). The choice is remembered per device;
   Previous/Next step by the visible days and a Today button jumps back.
+- Schedule editing: split an entry where you right-click or long-press it
+  ("Split at 10:30", or "Split in half" from the keyboard); merge it with the
+  previous/next entry on the same node (gaps up to 15 min, reported in the
+  toast). Ctrl/Cmd/Shift-click (or "Select" in the menu) selects several
+  entries: move them to another node, drag them together, merge or delete
+  them. Every change can be undone; Esc clears the selection.
 
 ### Fixed
 
