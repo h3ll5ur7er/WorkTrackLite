@@ -24,6 +24,9 @@
   Manage shows the money value of tracked time and of the budget; Reports show
   billable time and amounts; CSV exports gain `billable,rate,amount` columns
   (appended at the end, so existing column positions are unchanged).
+- Schedule views: Day, 3 days or Week, or Auto (day on phones, 3 days on
+  narrow windows, week otherwise). The choice is remembered per device;
+  Previous/Next step by the visible days and a Today button jumps back.
 
 ### Fixed
 

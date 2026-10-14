@@ -103,6 +103,9 @@
   color: var(--c-fg-3);
   font-size: 0.9rem;
 }
+.sched__view {
+  padding: 4px 6px;
+}
 .sched__actions {
   display: flex;
   gap: 6px;
@@ -110,7 +113,7 @@
 
 .sched__day-row {
   display: grid;
-  grid-template-columns: 56px repeat(7, 1fr);
+  grid-template-columns: 56px repeat(var(--days, 7), 1fr);
   border-bottom: 1px solid var(--c-border);
   background: var(--c-bg-2);
   position: sticky;
@@ -139,7 +142,7 @@
 }
 .sched__grid {
   display: grid;
-  grid-template-columns: 56px repeat(7, 1fr);
+  grid-template-columns: 56px repeat(var(--days, 7), 1fr);
   position: relative;
 }
 .sched__gutter {
@@ -301,6 +304,20 @@
 
 /* ----- Mobile ----- */
 @media (max-width: 720px) {
+  .sched__header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .sched__week-label {
+    flex: 1 1 auto;
+  }
+  .sched__actions {
+    flex: 1 0 100%;
+    justify-content: space-between;
+  }
+  .sched__long {
+    display: none;
+  }
   .sched {
     grid-template-columns: 1fr;
   }
@@ -309,7 +326,7 @@
   } /* tree drag is desktop only; use "+ New entry" or long-press */
   .sched__grid,
   .sched__day-row {
-    grid-template-columns: 40px repeat(7, minmax(44px, 1fr));
+    grid-template-columns: 40px repeat(var(--days, 7), minmax(44px, 1fr));
   }
   .sched__day-head {
     font-size: 0.65rem;

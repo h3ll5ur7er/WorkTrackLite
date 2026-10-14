@@ -20,6 +20,7 @@ import { ToastService } from '../../core/toast.service';
 import { readableTextColor } from '../../domain/color';
 import { formatClock, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
+import { ScheduleView, ScheduleViewSetting, VIEW_DAYS, alignStart, resolveView, stepStart } from '../../domain/schedule-view';
 import {
   MINUTES_PER_DAY,
   MS_PER_HOUR,
@@ -28,7 +29,6 @@ import {
   atWallClockMinutes,
   daysFrom,
   isSameDay,
-  startOfWeek,
   wallClockMinutes,
 } from '../../domain/time';
 import { LongPressDirective, LongPressEvent, swallowNextClick } from '../../shared/long-press.directive';
@@ -42,6 +42,17 @@ const DRAG_THRESHOLD_PX = 4;
 const LONG_PRESS_MS = 500;
 const HOUR_HEIGHT_PX = 56;
 const DRAG_MIME = 'application/x-worktrack-node';
+const VIEW_KEY = 'worktracklite.scheduleView';
+
+function readViewSetting(): ScheduleViewSetting {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    if (v === 'day' || v === '3day' || v === 'week' || v === 'auto') return v;
+  } catch {
+    /* ignore */
+  }
+  return 'auto';
+}
 
 interface DragState {
   kind: 'move' | 'resize-start' | 'resize-end';
@@ -59,6 +70,7 @@ type MenuState = { x: number; y: number } & ({ entry: TimeEntry } | { dayStart: 
 
 @Component({
   selector: 'app-schedule',
+  host: { '(window:resize)': 'onResize()' },
   imports: [NgTemplateOutlet, EntryEditorComponent, ContextMenuComponent, LongPressDirective],
   templateUrl: './schedule.component.html',
   styleUrl: './schedule.component.scss',
@@ -77,15 +89,32 @@ export class ScheduleComponent {
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   private readonly weekStartsOn = computed(() => this.data.settings().weekStartsOn ?? 1);
-  /** Local midnight of the first visible day; re-anchors when the week-start setting changes. */
-  protected readonly weekStart = linkedSignal<number, number>({
-    source: this.weekStartsOn,
-    computation: (ws, prev) => startOfWeek(prev?.value ?? Date.now(), ws),
+
+  /** Day / 3 days / Week, or automatic by screen width. Remembered per device. */
+  protected readonly viewSetting = signal<ScheduleViewSetting>(readViewSetting());
+  private readonly width = signal(globalThis.innerWidth ?? 1280);
+  protected readonly view = computed(() => resolveView(this.viewSetting(), this.width()));
+  private readonly layout = computed(() => ({ view: this.view(), weekStartsOn: this.weekStartsOn() }));
+
+  /**
+   * Local midnight of the first visible day. Re-aligns when the view or the
+   * week-start setting changes, keeping today in view if it was visible.
+   */
+  protected readonly rangeStart = linkedSignal<{ view: ScheduleView; weekStartsOn: number }, number>({
+    source: this.layout,
+    computation: ({ view, weekStartsOn }, prev) => {
+      let anchor = Date.now();
+      if (prev) {
+        const prevEnd = addDays(prev.value, VIEW_DAYS[prev.source.view]);
+        if (anchor < prev.value || anchor >= prevEnd) anchor = prev.value;
+      }
+      return alignStart(view, anchor, weekStartsOn);
+    },
   });
 
   protected readonly days = computed(() => {
     const today = this.timer.minute();
-    return daysFrom(this.weekStart(), 7).map((ms) => ({
+    return daysFrom(this.rangeStart(), VIEW_DAYS[this.view()]).map((ms) => ({
       ms,
       label: new Date(ms).toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }),
       isToday: isSameDay(ms, today),
@@ -156,14 +185,33 @@ export class ScheduleComponent {
 
   // --- Navigation ----------------------------------------------------------------
 
-  protected prevWeek(): void {
-    this.weekStart.set(startOfWeek(addDays(this.weekStart(), -7), this.weekStartsOn()));
+  protected readonly pageLabel = computed(() => ({ day: 'day', '3day': '3 days', week: 'week' })[this.view()]);
+  protected readonly rangeLabel = computed(() => {
+    const d = this.days();
+    return d.length === 1 ? d[0].label : `${d[0].label} – ${d[d.length - 1].label}`;
+  });
+
+  protected prevPage(): void {
+    this.rangeStart.set(stepStart(this.view(), this.rangeStart(), -1, this.weekStartsOn()));
   }
-  protected nextWeek(): void {
-    this.weekStart.set(startOfWeek(addDays(this.weekStart(), 7), this.weekStartsOn()));
+  protected nextPage(): void {
+    this.rangeStart.set(stepStart(this.view(), this.rangeStart(), 1, this.weekStartsOn()));
   }
-  protected thisWeek(): void {
-    this.weekStart.set(startOfWeek(Date.now(), this.weekStartsOn()));
+  protected today(): void {
+    this.rangeStart.set(alignStart(this.view(), Date.now(), this.weekStartsOn()));
+  }
+
+  protected setViewSetting(v: ScheduleViewSetting): void {
+    this.viewSetting.set(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* per-device convenience only */
+    }
+  }
+
+  protected onResize(): void {
+    this.width.set(globalThis.innerWidth);
   }
 
   // --- Labels / helpers ------------------------------------------------------------
