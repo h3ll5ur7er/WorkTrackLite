@@ -31,6 +31,8 @@ export interface SeedNode {
   budget?: { type: 'none' | 'target' | 'fixed'; seconds: number; softLimit?: number };
   archived?: boolean;
   order?: number;
+  tags?: string[];
+  color?: string;
 }
 export interface SeedEntry {
   id: string;

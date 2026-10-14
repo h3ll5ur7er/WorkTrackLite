@@ -32,6 +32,8 @@ export interface Node {
   /** Sort order among siblings (ascending). */
   order: number;
   budget: Budget;
+  /** #rrggbb; children without their own colour inherit it. */
+  color?: string;
   /** Archived nodes are hidden from the dashboard, palette and pickers but keep their history. */
   archived?: boolean;
   /**
@@ -82,6 +84,8 @@ export interface Settings {
   idleAwayMinutes?: number;
   /** Ask once when a timer has run this long (hours, default 8). */
   idleLongRunningHours?: number;
+  /** Tag name → #rrggbb. */
+  tagColors?: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = { id: 'app', theme: 'system', weekStartsOn: 1 };

@@ -17,6 +17,7 @@ import { DataService } from '../../core/data.service';
 import { Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
+import { readableTextColor } from '../../domain/color';
 import { formatClock, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
 import {
@@ -166,6 +167,12 @@ export class ScheduleComponent {
   }
 
   // --- Labels / helpers ------------------------------------------------------------
+
+  /** Node colour (inherited) with readable text; default accent when uncoloured. */
+  protected blockColor(seg: DaySegment): { bg: string | null; fg: string | null } {
+    const c = this.data.tree().colorOf(seg.entry.nodeId);
+    return c ? { bg: c, fg: readableTextColor(c) } : { bg: null, fg: null };
+  }
 
   protected nodeName(e: TimeEntry): string {
     return this.data.tree().get(e.nodeId)?.name ?? '(deleted)';

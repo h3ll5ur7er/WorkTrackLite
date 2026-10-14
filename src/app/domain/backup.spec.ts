@@ -78,6 +78,19 @@ describe('backup', () => {
     expect(res.ok && res.data.nodes[0].budget.type).toBe('target');
   });
 
+  it('keeps valid colours and drops anything that is not #rrggbb', () => {
+    const b = valid();
+    b.nodes[0].color = '#EF4444';
+    b.nodes[1].color = 'red; background:url(x)';
+    b.settings.tagColors = { urgent: '#22c55e', bad: 'javascript:alert(1)' };
+    const res = parse(b);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.nodes[0].color).toBe('#ef4444');
+    expect(res.data.nodes[1].color).toBeUndefined();
+    expect(res.data.settings.tagColors).toEqual({ urgent: '#22c55e' });
+  });
+
   it('names files by local date', () => {
     expect(backupFileName(new Date(2026, 9, 3, 23, 59).getTime())).toBe('worktracklite-backup-2026-10-03.json');
   });

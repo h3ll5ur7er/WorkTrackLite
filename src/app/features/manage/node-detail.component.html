@@ -114,7 +114,19 @@
       <label class="field">
         <span>Tags (comma separated)</span>
         <input [value]="(n.tags ?? []).join(', ')" (change)="setTags($any($event.target).value)" />
+        <app-tag-chips [tags]="n.tags" />
       </label>
+    </div>
+    <div class="field nd__color">
+      <span id="nd-color-label">Colour{{ n.color ? '' : inheritedColor() ? ' (inherited)' : '' }}</span>
+      <app-color-picker
+        name="node-color"
+        label="Colour"
+        [value]="n.color"
+        [inherited]="inheritedColor()"
+        [noneLabel]="inheritedColor() ? 'Inherit from parent' : 'No colour'"
+        (changed)="setColor($event)"
+      />
     </div>
     <label class="field nd__notes">
       <span>Notes</span>
@@ -188,9 +200,7 @@
               <td class="entries__num">{{ formatHMS(entrySeconds(e)) }}</td>
               <td>
                 {{ e.note }}
-                @for (t of e.tags ?? []; track t) {
-                  <span class="nd__tag">{{ t }}</span>
-                }
+                <app-tag-chips [tags]="e.tags" />
               </td>
               <td class="entries__actions">
                 @if (e.end !== null) {

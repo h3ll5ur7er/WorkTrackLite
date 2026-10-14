@@ -30,6 +30,7 @@
             [routerLink]="['/manage', n.id]"
             [attr.aria-current]="selectedId() === n.id ? 'page' : null"
           >
+            <span class="tree__dot" [style.background]="colorOf(n.id)" aria-hidden="true"></span>
             <span class="tree__kind">{{ n.kind }}</span>
             <span class="tree__name">{{ n.name }}</span>
             @if (n.archived) {

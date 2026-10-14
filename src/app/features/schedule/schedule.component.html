@@ -110,6 +110,8 @@
                 [style.height.%]="(seg.heightMin / 1440) * 100"
                 [style.left.%]="(100 / seg.laneCount) * seg.lane"
                 [style.width.%]="100 / seg.laneCount"
+                [style.background]="seg.entry.end === null ? null : blockColor(seg).bg"
+                [style.color]="seg.entry.end === null ? null : blockColor(seg).fg"
                 (pointerdown)="onBlockPointerDown($event, seg, 'move')"
                 (click)="onBlockClick($event, seg)"
                 (keydown)="onBlockKey($event, seg)"

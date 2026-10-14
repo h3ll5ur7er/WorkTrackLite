@@ -7,13 +7,15 @@ import { Settings, ThemePreference } from '../../core/models';
 import { StorageService } from '../../core/storage.service';
 import { ToastService } from '../../core/toast.service';
 import { BackupData } from '../../domain/backup';
+import { ColorPickerComponent } from '../../shared/ui/color-picker.component';
+import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
 
 @Component({
   selector: 'app-settings',
-  imports: [DatePipe],
+  imports: [DatePipe, ColorPickerComponent, TagChipsComponent],
   template: `
     <div class="settings">
       <h1>Settings</h1>
@@ -107,6 +109,23 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
         </div>
       </section>
 
+      <section class="panel" aria-labelledby="s-tags">
+        <h2 id="s-tags">Tag colours</h2>
+        @for (tag of allTags(); track tag) {
+          <div class="tag-row">
+            <app-tag-chips [tags]="[tag]" />
+            <app-color-picker
+              [name]="'tag-' + tag"
+              [label]="'Colour for tag ' + tag"
+              [value]="data.settings().tagColors?.[tag]"
+              (changed)="setTagColor(tag, $event)"
+            />
+          </div>
+        } @empty {
+          <p class="muted">No tags yet. Add tags to nodes or time entries, then colour them here.</p>
+        }
+      </section>
+
       <section class="panel" aria-labelledby="s-idle">
         <h2 id="s-idle">Forgotten-timer guard</h2>
         <label class="check-row">
@@ -162,6 +181,17 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
       gap: 10px;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .tag-row app-tag-chips {
+      min-width: 120px;
+    }
     .check-row {
       display: flex;
       gap: 8px;
@@ -196,6 +226,18 @@ export class SettingsComponent {
   protected readonly pendingWarnings = signal<string[]>([]);
   /** The single-file build only exists in deployed builds, not in `ng serve` or inside itself. */
   protected readonly singleFileAvailable = signal(false);
+
+  /** Every tag used on a node or entry, sorted. */
+  protected readonly allTags = computed(() => {
+    const tags = new Set<string>();
+    for (const n of this.data.nodes()) for (const t of n.tags ?? []) tags.add(t);
+    for (const e of this.data.entries()) for (const t of e.tags ?? []) tags.add(t);
+    return [...tags].sort((a, b) => a.localeCompare(b));
+  });
+
+  protected setTagColor(tag: string, color: string | undefined): Promise<void> {
+    return this.data.setTagColor(tag, color);
+  }
 
   protected readonly usageLabel = computed(() => {
     const u = this.storage.usage();

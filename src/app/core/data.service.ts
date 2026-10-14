@@ -256,6 +256,17 @@ export class DataService {
     });
   }
 
+  /** Sets (or with `undefined` clears) one tag's colour, atomically. */
+  async setTagColor(tag: string, color: string | undefined): Promise<void> {
+    await this.db.transaction('rw', this.db.settings, async () => {
+      const cur = { ...DEFAULT_SETTINGS, ...(await this.db.settings.get('app')) };
+      const tagColors = { ...(cur.tagColors ?? {}) };
+      if (color) tagColors[tag] = color;
+      else delete tagColors[tag];
+      await this.db.settings.put({ ...cur, tagColors, id: 'app' });
+    });
+  }
+
   // --- Backup ----------------------------------------------------------------
 
   async snapshot(): Promise<BackupData> {

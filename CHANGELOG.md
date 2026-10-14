@@ -12,6 +12,9 @@
   closed with a timer running (15 min+), or a timer ran 8 h+ or past midnight,
   a dialog offers to remove the away time and keep timing, stop at a chosen
   time, or keep it. Undoable; thresholds and an off switch are in Settings.
+- Colours: pick a colour per node (children inherit it) and per tag (Settings).
+  Used for calendar blocks (with readable text), dashboard card stripes, tree
+  dots and tag chips. Included in backups; only `#rrggbb` values are accepted.
 
 ### Fixed
 

@@ -67,6 +67,15 @@ export class TreeIndex {
     return out;
   }
 
+  /** The node's colour, or its nearest coloured ancestor's (null if none). */
+  colorOf(id: string): string | null {
+    for (const nid of [id, ...this.ancestorIds(id)]) {
+      const c = this.byId.get(nid)?.color;
+      if (c) return c;
+    }
+    return null;
+  }
+
   /** Names from the root down to the node itself. */
   pathNames(id: string): string[] {
     const cached = this.pathCache.get(id);

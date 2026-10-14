@@ -30,6 +30,7 @@
         [class.card--over]="c.overBudget"
         [class.card--soft]="c.softBreached"
         [attr.data-node-id]="c.node.id"
+        [style.--node-color]="c.color"
         appLongPress
         (appLongPress)="onLongPress($event, c)"
         (contextmenu)="onContextMenu($event, c)"
@@ -57,6 +58,9 @@
             <span class="card__kind">{{ c.node.kind }}</span>
             {{ c.node.name }}
           </h2>
+          @if (c.node.tags?.length) {
+            <app-tag-chips [tags]="c.node.tags" />
+          }
 
           <div class="card__chart" aria-hidden="true">
             <app-burndown-chart [entries]="c.entries" [budget]="c.node.budget" [now]="timer.minute()" />

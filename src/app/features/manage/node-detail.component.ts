@@ -12,11 +12,13 @@ import { formatHMS, parseTags } from '../../domain/format';
 import { MS_PER_HOUR } from '../../domain/time';
 import { liveSubtreeSeconds, reorderSiblings } from '../../domain/tree';
 import { downloadFile, safeFileName } from '../../shared/download';
+import { ColorPickerComponent } from '../../shared/ui/color-picker.component';
 import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
+import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 
 @Component({
   selector: 'app-node-detail',
-  imports: [DatePipe, EntryEditorComponent],
+  imports: [DatePipe, EntryEditorComponent, ColorPickerComponent, TagChipsComponent],
   templateUrl: './node-detail.component.html',
   styleUrl: './node-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -131,6 +133,15 @@ export class NodeDetailComponent {
   }
   protected setKind(kind: string): Promise<void> {
     return this.patch({ kind: kind.trim() || 'Item' });
+  }
+  /** Colour the node would get from its ancestors if it had none itself. */
+  protected readonly inheritedColor = computed(() => {
+    const n = this.node();
+    return n?.parentId ? this.tree().colorOf(n.parentId) : null;
+  });
+
+  protected setColor(color: string | undefined): Promise<void> {
+    return this.patch({ color });
   }
   protected setNotes(notes: string): Promise<void> {
     return this.patch({ notes: notes.trim() ? notes : undefined });

@@ -103,6 +103,12 @@ describe('DataService', () => {
     expect(await db.settings.get('app')).toMatchObject({ theme: 'light', lastNodeId: 'x', weekStartsOn: 0 });
   });
 
+  it('tag colours: concurrent edits all land, and undefined removes one', async () => {
+    await Promise.all([data.setTagColor('a', '#ef4444'), data.setTagColor('b', '#22c55e'), data.setTagColor('c', '#3b82f6')]);
+    await data.setTagColor('b', undefined);
+    expect((await db.settings.get('app'))?.tagColors).toEqual({ a: '#ef4444', c: '#3b82f6' });
+  });
+
   it('snapshot → replaceAll restores the same data', async () => {
     const a = await data.addNode({ parentId: null, name: 'A', kind: 'K', tags: ['t'] });
     await data.addEntry({ nodeId: a, start: 0, end: 1000, note: 'n' });

@@ -1,4 +1,5 @@
 import { Budget, BudgetType, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from '../core/models';
+import { isHexColor } from './color';
 import { closeAllButNewest } from './entries';
 
 /**
@@ -130,6 +131,7 @@ function toNode(v: unknown, i: number): Node {
     tags: optTags(o['tags']),
     order: typeof o['order'] === 'number' ? o['order'] : 0,
     budget,
+    color: isHexColor(o['color']) ? o['color'].toLowerCase() : undefined,
     archived: o['archived'] === true ? true : undefined,
     showInDashboard: typeof o['showInDashboard'] === 'boolean' ? o['showInDashboard'] : undefined,
     createdAt: typeof o['createdAt'] === 'number' ? o['createdAt'] : 0,
@@ -170,6 +172,10 @@ function toSettings(v: unknown): Settings {
     s.weekStartsOn = o['weekStartsOn'];
   }
   if (typeof o['lastBackupAt'] === 'number') s.lastBackupAt = o['lastBackupAt'];
+  if (isObject(o['tagColors'])) {
+    const colors = Object.entries(o['tagColors']).filter((kv): kv is [string, string] => isHexColor(kv[1]));
+    if (colors.length) s.tagColors = Object.fromEntries(colors.map(([k, v]) => [k, v.toLowerCase()]));
+  }
   if (typeof o['idleGuard'] === 'boolean') s.idleGuard = o['idleGuard'];
   if (typeof o['idleAwayMinutes'] === 'number' && o['idleAwayMinutes'] > 0) s.idleAwayMinutes = o['idleAwayMinutes'];
   if (typeof o['idleLongRunningHours'] === 'number' && o['idleLongRunningHours'] > 0) s.idleLongRunningHours = o['idleLongRunningHours'];
