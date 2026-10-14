@@ -27,10 +27,10 @@ export function createBackup(data: BackupData, now = Date.now()): BackupFile {
   return { app: BACKUP_APP_ID, formatVersion: BACKUP_FORMAT_VERSION, exportedAt: new Date(now).toISOString(), ...data };
 }
 
-export function backupFileName(now = Date.now()): string {
+export function backupFileName(now = Date.now(), encrypted = false): string {
   const d = new Date(now);
   const p = (n: number) => String(n).padStart(2, '0');
-  return `worktracklite-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`;
+  return `worktracklite-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}${encrypted ? '.encrypted' : ''}.json`;
 }
 
 export type ParseResult = { ok: true; data: BackupData; warnings: string[] } | { ok: false; error: string };

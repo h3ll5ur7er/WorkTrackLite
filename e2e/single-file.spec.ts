@@ -30,6 +30,12 @@ test('regression: the single-file build works when opened from disk (file://)', 
     .click();
   await page.getByRole('button', { name: 'Start timer on Offline Co' }).click();
   await expect(page.locator('.bar__name')).toHaveText('Offline Co');
+  // WebCrypto needs a secure context; file:// pages are one, so encrypted backups work offline too.
+  await page
+    .getByRole('link', { name: /Settings/ })
+    .first()
+    .click();
+  await expect(page.getByLabel('Protect the backup with a password')).toBeVisible();
 });
 
 test('the deployed app links to the single-file download', async ({ page, request }) => {

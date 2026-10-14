@@ -33,6 +33,11 @@
   toast). Ctrl/Cmd/Shift-click (or "Select" in the menu) selects several
   entries: move them to another node, drag them together, merge or delete
   them. Every change can be undone; Esc clears the selection.
+- Encrypted backups: Settings can protect an export with a password
+  (AES-256-GCM, key from PBKDF2-SHA-256 with 600k iterations; file name ends in
+  `.encrypted.json`). Restoring one, in Settings or on the first-run screen, asks
+  for the password; a wrong password changes nothing. Works offline in the
+  single-file build too.
 
 ### Fixed
 

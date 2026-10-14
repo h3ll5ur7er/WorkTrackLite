@@ -113,5 +113,6 @@ describe('backup', () => {
 
   it('names files by local date', () => {
     expect(backupFileName(new Date(2026, 9, 3, 23, 59).getTime())).toBe('worktracklite-backup-2026-10-03.json');
+    expect(backupFileName(new Date(2026, 9, 3).getTime(), true)).toBe('worktracklite-backup-2026-10-03.encrypted.json');
   });
 });

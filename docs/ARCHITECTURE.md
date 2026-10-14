@@ -27,6 +27,7 @@ src/app/
     budget.ts          budget reports
     csv.ts             CSV export (RFC 4180, formula-injection safe)
     backup.ts          backup file format: create, validate, migrate
+    backup-crypto.ts   password-encrypted backup envelope (WebCrypto)
     schedule-layout.ts calendar segments, overlap lanes, snapping
     burndown.ts        dashboard chart geometry
     entries.ts         entry invariants (one running timer)
@@ -40,7 +41,8 @@ src/app/
   features/            one folder per route (+ the first-run setup)
     dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command
-                       palette, timer bar, toasts, long-press directive
+                       palette, timer bar, toasts, long-press directive,
+                       colour picker, tag chips, idle dialog, password prompt
   testing/             helpers for unit tests (fresh DB per test, factories)
 e2e/                   Playwright tests against the production build
 scripts/               single-file inliner, static server for e2e
@@ -86,6 +88,16 @@ Schema changes need two steps, both covered by tests:
 
 A backup is `{ app: 'worktracklite', formatVersion, exportedAt, nodes, entries,
 templates, settings }`. Import replaces all data in one transaction.
+
+A password-protected backup wraps that JSON text (`domain/backup-crypto.ts`):
+`{ app, encrypted: 1, kdf: { PBKDF2, SHA-256, iterations, salt }, cipher:
+{ AES-GCM, iv }, data }`, all binary values base64. The key is derived with
+PBKDF2 (600k iterations, NFC-normalised password) and a fresh salt and IV are
+used for every export. Import recognises the envelope, asks for the password
+and then runs the normal validation and migration on the decrypted text, so the
+envelope does not need a version bump when the backup format changes. WebCrypto
+needs a secure context (https, localhost or `file://`); elsewhere the option is
+hidden.
 
 ## Time zones
 
