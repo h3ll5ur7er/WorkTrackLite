@@ -1,0 +1,52 @@
+# Grouped weekly updates: a handful of PRs instead of one per package.
+# Angular, TypeScript and Node type majors are left out on purpose: they need
+# `ng update` (which runs code migrations) or a Node upgrade, not a version bump.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Let new releases settle a week before proposing them (supply-chain safety).
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      - dependency-name: '@angular/*'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@angular-devkit/*'
+        update-types: [version-update:semver-major]
+      - dependency-name: angular-eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+    groups:
+      angular:
+        patterns: ['@angular/*', '@angular-devkit/*', angular-eslint]
+      tooling:
+        dependency-type: development
+        exclude-patterns: ['@angular/*', '@angular-devkit/*', angular-eslint]
+        update-types: [minor, patch]
+      runtime:
+        dependency-type: production
+        exclude-patterns: ['@angular/*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
