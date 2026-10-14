@@ -25,7 +25,7 @@
     "@angular/platform-browser": "^22.2.2",
     "@angular/router": "^22.2.2",
     "@angular/service-worker": "^22.2.2",
-    "dexie": "^4.0.10",
+    "dexie": "^4.4.6",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
