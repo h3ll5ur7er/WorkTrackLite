@@ -37,6 +37,8 @@ export class DataService {
   readonly settings = signal<Settings>(DEFAULT_SETTINGS);
   readonly ready = signal(false);
   readonly error = signal<string | null>(null);
+  private readonly readyPromise: Promise<void>;
+  private resolveReady!: () => void;
 
   /** Precomputed hierarchy (children, paths, subtrees). */
   readonly tree = computed(() => new TreeIndex(this.nodes()));
@@ -52,7 +54,13 @@ export class DataService {
   readonly activeTemplate = computed(() => this.templates().find((t) => t.id === this.settings().templateId));
 
   constructor() {
+    this.readyPromise = new Promise((r) => (this.resolveReady = r));
     void this.bootstrap();
+  }
+
+  /** Resolves once the signals mirror the database (for code that runs before the UI). */
+  whenReady(): Promise<void> {
+    return this.readyPromise;
   }
 
   private async bootstrap(): Promise<void> {
@@ -85,6 +93,7 @@ export class DataService {
         ),
       ]);
       this.ready.set(true);
+      this.resolveReady();
     } catch (e) {
       console.error(e);
       this.error.set(

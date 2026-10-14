@@ -65,9 +65,10 @@ export class TimerService {
 
   /** Starts a new entry on the node of the last timer. */
   async resumeLast(): Promise<TimerChange> {
-    const last = this.data.settings().lastNodeId;
-    if (!last || !this.data.tree().get(last)) return NO_CHANGE;
-    return this.start(last);
+    const last = (await this.db.settings.get('app'))?.lastNodeId;
+    const node = last ? await this.db.nodes.get(last) : undefined;
+    if (!node || node.archived) return NO_CHANGE;
+    return this.start(node.id);
   }
 
   /** Reverts a change made by start/stop/toggle. */

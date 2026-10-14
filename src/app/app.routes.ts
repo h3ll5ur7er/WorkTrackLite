@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { shortcutActionGuard } from './core/shortcut-actions';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { ManageComponent } from './features/manage/manage.component';
 import { ScheduleComponent } from './features/schedule/schedule.component';
@@ -14,5 +15,7 @@ export const routes: Routes = [
   { path: 'manage', component: ManageComponent, title: 'Manage · WorkTrackLite' },
   { path: 'manage/:nodeId', component: ManageComponent, title: 'Manage · WorkTrackLite' },
   { path: 'settings', component: SettingsComponent, title: 'Settings · WorkTrackLite' },
+  // App-icon shortcuts (web manifest): run the action, then redirect.
+  { path: 'action/:name', canActivate: [shortcutActionGuard], children: [] },
   { path: '**', redirectTo: 'dashboard' },
 ];

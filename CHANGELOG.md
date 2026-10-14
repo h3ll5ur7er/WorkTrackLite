@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- The running timer is visible outside the app: the tab title shows
+  `▶ 1:02:03 Design · …`, and the installed app gets an icon badge.
+- App-icon shortcuts (long-press the installed app): Resume last timer, Stop
+  timer, Schedule. They open `#/action/resume|stop`.
+
 ### Fixed
 
 - Keys pressed right after opening a context menu or the entry editor could be
