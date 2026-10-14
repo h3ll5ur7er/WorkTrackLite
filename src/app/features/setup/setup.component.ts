@@ -1,13 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { DataService } from '../../core/data.service';
 import { StorageService } from '../../core/storage.service';
 import { ToastService } from '../../core/toast.service';
 import { BackupService } from '../../core/backup.service';
+import { ParseResult } from '../../domain/backup';
+import { renderNow } from '../../shared/render-now';
+import { PasswordPromptComponent } from '../../shared/ui/password-prompt.component';
 
 /** First-run screen: pick a hierarchy template and create the first node (or restore a backup). */
 @Component({
   selector: 'app-setup',
+  imports: [PasswordPromptComponent],
   template: `
     <form class="setup" (submit)="$event.preventDefault(); finish()">
       <h1>Welcome to WorkTrackLite</h1>
@@ -42,8 +46,19 @@ import { BackupService } from '../../core/backup.service';
         </label>
       </div>
     </form>
+    @if (locked()) {
+      <!-- Outside the setup form: forms cannot be nested. -->
+      <div class="setup__unlock">
+        <app-password-prompt [error]="unlockError()" [busy]="unlocking()" (submitted)="unlock($event)" (cancelled)="locked.set(null)" />
+      </div>
+    }
   `,
   styles: `
+    .setup__unlock {
+      max-width: 520px;
+      margin: -4vh auto 6vh;
+      padding: 0 24px;
+    }
     .setup {
       max-width: 520px;
       margin: 6vh auto;
@@ -104,8 +119,13 @@ export class SetupComponent {
   private readonly toast = inject(ToastService);
   private readonly backup = inject(BackupService);
   private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly picked = signal<string | null>('dev');
+  /** Text of a password-protected backup waiting for its password. */
+  protected readonly locked = signal<string | null>(null);
+  protected readonly unlockError = signal<string | null>(null);
+  protected readonly unlocking = signal(false);
   protected readonly firstName = signal('');
 
   protected firstLevel(): string {
@@ -129,9 +149,38 @@ export class SetupComponent {
   }
 
   protected async restore(ev: Event): Promise<void> {
-    const file = (ev.target as HTMLInputElement).files?.[0];
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
     if (!file) return;
     const res = await this.backup.read(file);
+    if (!res.ok && 'locked' in res) {
+      this.unlockError.set(null);
+      this.locked.set(res.text);
+      // Render the prompt now, so it has focus before the next keystroke.
+      renderNow(this.cdr);
+      return;
+    }
+    this.locked.set(null);
+    await this.apply(res);
+  }
+
+  protected async unlock(password: string): Promise<void> {
+    const text = this.locked();
+    if (!text) return;
+    this.unlocking.set(true);
+    this.unlockError.set(null);
+    const res = await this.backup.unlock(text, password);
+    this.unlocking.set(false);
+    if (!res.ok) {
+      this.unlockError.set(res.error);
+      return;
+    }
+    this.locked.set(null);
+    await this.apply(res);
+  }
+
+  private async apply(res: ParseResult): Promise<void> {
     if (!res.ok) {
       this.toast.error(res.error);
       return;

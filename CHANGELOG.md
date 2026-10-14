@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+### Added
+
+- The running timer is visible outside the app: the tab title shows
+  `▶ 1:02:03 Design · …`, and the installed app gets an icon badge.
+- App-icon shortcuts (long-press the installed app): Resume last timer, Stop
+  timer, Schedule. They open `#/action/resume|stop`.
+- Forgotten-timer guard: when the app comes back after the device slept or was
+  closed with a timer running (15 min+), or a timer ran 8 h+ or past midnight,
+  a dialog offers to remove the away time and keep timing, stop at a chosen
+  time, or keep it. Undoable; thresholds and an off switch are in Settings.
+- Colours: pick a colour per node (children inherit it) and per tag (Settings).
+  Used for calendar blocks (with readable text), dashboard card stripes, tree
+  dots and tag chips. Included in backups; only `#rrggbb` values are accepted.
+- Reports: this/last week, this/last month, last 30 days or a custom range,
+  optionally scoped to one customer/project; grouped by node (tree with
+  subtotals), by day (DST-safe, midnight-crossing entries split) or by tag.
+  Summary CSV and entries CSV (clipped to the range).
+- Billing: hourly rate and billable flag per node (inherited by children),
+  billable override per entry, currency and per-entry rounding in Settings.
+  Manage shows the money value of tracked time and of the budget; Reports show
+  billable time and amounts; CSV exports gain `billable,rate,amount` columns
+  (appended at the end, so existing column positions are unchanged).
+- Schedule views: Day, 3 days or Week, or Auto (day on phones, 3 days on
+  narrow windows, week otherwise). The choice is remembered per device;
+  Previous/Next step by the visible days and a Today button jumps back.
+- Schedule editing: split an entry where you right-click or long-press it
+  ("Split at 10:30", or "Split in half" from the keyboard); merge it with the
+  previous/next entry on the same node (gaps up to 15 min, reported in the
+  toast). Ctrl/Cmd/Shift-click (or "Select" in the menu) selects several
+  entries: move them to another node, drag them together, merge or delete
+  them. Every change can be undone; Esc clears the selection.
+- Encrypted backups: Settings can protect an export with a password
+  (AES-256-GCM, key from PBKDF2-SHA-256 with 600k iterations; file name ends in
+  `.encrypted.json`). Restoring one, in Settings or on the first-run screen, asks
+  for the password; a wrong password changes nothing. Works offline in the
+  single-file build too.
+
 ### Fixed
 
 - Keys pressed right after opening a context menu or the entry editor could be

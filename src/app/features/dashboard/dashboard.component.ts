@@ -11,12 +11,15 @@ import { MS_PER_HOUR } from '../../domain/time';
 import { liveSubtreeSeconds } from '../../domain/tree';
 import { LongPressDirective, LongPressEvent } from '../../shared/long-press.directive';
 import { ContextMenuComponent, MenuItem } from '../../shared/ui/context-menu.component';
-import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
+import { EntryDraft, EntryEditorComponent, draftFields } from '../../shared/ui/entry-editor.component';
+import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 import { BurndownChartComponent } from './burndown-chart.component';
 
 interface CardBase {
   node: Node;
   pathLabels: string[];
+  /** Own or inherited colour (null: default accent). */
+  color: string | null;
   /** Entries of the whole subtree (stable until data changes; feeds the chart). */
   entries: TimeEntry[];
 }
@@ -35,7 +38,7 @@ const REPEAT_GUARD_MS = 400;
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, BurndownChartComponent, ContextMenuComponent, EntryEditorComponent, LongPressDirective],
+  imports: [RouterLink, BurndownChartComponent, ContextMenuComponent, EntryEditorComponent, LongPressDirective, TagChipsComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,6 +65,7 @@ export class DashboardComponent {
       .map((node) => ({
         node,
         pathLabels: tree.pathNames(node.id).slice(0, -1),
+        color: tree.colorOf(node.id),
         entries: tree.subtreeIds(node.id).flatMap((id) => byNode.get(id) ?? []),
       }));
   });
@@ -156,13 +160,7 @@ export class DashboardComponent {
 
   protected async saveEntry(draft: EntryDraft): Promise<void> {
     try {
-      await this.data.addEntry({
-        nodeId: draft.nodeId!,
-        start: draft.start,
-        end: draft.end,
-        note: draft.note || undefined,
-        tags: draft.tags,
-      });
+      await this.data.addEntry(draftFields(draft));
       this.editor.set(null);
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : String(e));

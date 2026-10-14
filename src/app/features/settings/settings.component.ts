@@ -1,18 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, inject, isDevMode, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { BackupService } from '../../core/backup.service';
 import { DataService } from '../../core/data.service';
-import { ThemePreference } from '../../core/models';
+import { IdleService } from '../../core/idle.service';
+import { Rounding, Settings, ThemePreference } from '../../core/models';
 import { StorageService } from '../../core/storage.service';
 import { ToastService } from '../../core/toast.service';
-import { BackupData } from '../../domain/backup';
+import { BackupData, ParseResult } from '../../domain/backup';
+import { cryptoAvailable } from '../../domain/backup-crypto';
+import { renderNow } from '../../shared/render-now';
+import { PasswordPromptComponent } from '../../shared/ui/password-prompt.component';
+import { ColorPickerComponent } from '../../shared/ui/color-picker.component';
+import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
 
 @Component({
   selector: 'app-settings',
-  imports: [DatePipe],
+  imports: [DatePipe, ColorPickerComponent, PasswordPromptComponent, TagChipsComponent],
   template: `
     <div class="settings">
       <h1>Settings</h1>
@@ -31,13 +37,42 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
             never
           }
         </p>
+        @if (canEncrypt) {
+          <label class="settings__check">
+            <input type="checkbox" [checked]="encrypt()" (change)="encrypt.set($any($event.target).checked)" />
+            Protect the backup with a password
+          </label>
+          @if (encrypt()) {
+            <div class="settings__passwords">
+              <label class="field">
+                <span>Password</span>
+                <input type="password" autocomplete="new-password" [value]="password()" (input)="password.set($any($event.target).value)" />
+              </label>
+              <label class="field">
+                <span>Repeat password</span>
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  [value]="password2()"
+                  (input)="password2.set($any($event.target).value)"
+                />
+              </label>
+              <p class="muted">Encrypted with AES-256. There is no way to recover a forgotten password.</p>
+            </div>
+          }
+        }
         <div class="row">
-          <button type="button" class="btn btn--primary" (click)="exportBackup()">⬇ Export backup (JSON)</button>
+          <button type="button" class="btn btn--primary" [disabled]="exporting()" (click)="exportBackup()">
+            ⬇ Export {{ encrypt() ? 'encrypted ' : '' }}backup (JSON)
+          </button>
           <label class="btn">
             ⬆ Restore from backup…
             <input type="file" accept="application/json,.json" class="visually-hidden" (change)="pickBackup($event)" />
           </label>
         </div>
+        @if (locked()) {
+          <app-password-prompt [error]="unlockError()" [busy]="unlocking()" (submitted)="unlock($event)" (cancelled)="locked.set(null)" />
+        }
         @if (pending(); as p) {
           <div class="settings__confirm" role="alertdialog" aria-labelledby="s-restore-title">
             <p id="s-restore-title">
@@ -106,6 +141,93 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
         </div>
       </section>
 
+      <section class="panel" aria-labelledby="s-billing">
+        <h2 id="s-billing">Billing</h2>
+        <div class="grid">
+          <label class="field">
+            <span>Currency</span>
+            <select (change)="setCurrency($any($event.target).value)">
+              @for (c of currencies; track c) {
+                <option [value]="c" [selected]="(data.settings().currency ?? 'EUR') === c">{{ c }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span>Round each entry to</span>
+            <select (change)="setRounding({ minutes: +$any($event.target).value })">
+              @for (m of roundingSteps; track m) {
+                <option [value]="m" [selected]="(data.settings().rounding?.minutes ?? 0) === m">
+                  {{ m ? m + ' min' : 'Exact (no rounding)' }}
+                </option>
+              }
+            </select>
+          </label>
+          @if (data.settings().rounding?.minutes) {
+            <label class="field">
+              <span>Rounding direction</span>
+              <select (change)="setRounding({ mode: $any($event.target).value })">
+                <option value="up" [selected]="data.settings().rounding?.mode === 'up'">Up</option>
+                <option value="nearest" [selected]="data.settings().rounding?.mode === 'nearest'">Nearest</option>
+                <option value="down" [selected]="data.settings().rounding?.mode === 'down'">Down</option>
+              </select>
+            </label>
+          }
+        </div>
+        <p class="muted">
+          Rates and the billable flag are set per node in Manage and inherited by children. Rounding applies to amounts in reports and CSV
+          exports, not to tracked time.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="s-tags">
+        <h2 id="s-tags">Tag colours</h2>
+        @for (tag of allTags(); track tag) {
+          <div class="tag-row">
+            <app-tag-chips [tags]="[tag]" />
+            <app-color-picker
+              [name]="'tag-' + tag"
+              [label]="'Colour for tag ' + tag"
+              [value]="data.settings().tagColors?.[tag]"
+              (changed)="setTagColor(tag, $event)"
+            />
+          </div>
+        } @empty {
+          <p class="muted">No tags yet. Add tags to nodes or time entries, then colour them here.</p>
+        }
+      </section>
+
+      <section class="panel" aria-labelledby="s-idle">
+        <h2 id="s-idle">Forgotten-timer guard</h2>
+        <label class="check-row">
+          <input type="checkbox" [checked]="idle.settings().enabled" (change)="updateIdle({ idleGuard: $any($event.target).checked })" />
+          Ask when a timer kept running while the device slept or the app was closed, ran very long, or crossed midnight
+        </label>
+        @if (idle.settings().enabled) {
+          <div class="grid">
+            <label class="field">
+              <span>Away after (minutes)</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                [value]="idle.settings().awayMinutes"
+                (change)="updateIdle({ idleAwayMinutes: positive($any($event.target).valueAsNumber) })"
+              />
+            </label>
+            <label class="field">
+              <span>Ask after a timer runs (hours)</span>
+              <input
+                type="number"
+                min="1"
+                step="0.5"
+                [value]="idle.settings().longRunningHours"
+                (change)="updateIdle({ idleLongRunningHours: positive($any($event.target).valueAsNumber) })"
+              />
+            </label>
+          </div>
+        }
+      </section>
+
       @if (singleFileAvailable()) {
         <section class="panel" aria-labelledby="s-offline">
           <h2 id="s-offline">Offline copy</h2>
@@ -129,6 +251,40 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
       gap: 10px;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .tag-row app-tag-chips {
+      min-width: 120px;
+    }
+    .check-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .settings__check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .settings__passwords {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+      max-width: 480px;
+      margin-bottom: 10px;
+    }
+    .settings__passwords p {
+      grid-column: 1 / -1;
+      margin: 0;
+    }
     .settings__confirm {
       margin-top: 12px;
       padding: 10px 12px;
@@ -141,8 +297,10 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
 export class SettingsComponent {
   protected readonly data = inject(DataService);
   protected readonly storage = inject(StorageService);
+  protected readonly idle = inject(IdleService);
   private readonly backup = inject(BackupService);
   private readonly toast = inject(ToastService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly weekdays = WEEKDAYS;
   protected readonly singleFileName = SINGLE_FILE_NAME;
@@ -152,10 +310,31 @@ export class SettingsComponent {
     { id: 'light', label: 'Light' },
   ];
 
+  protected readonly canEncrypt = cryptoAvailable();
+  protected readonly encrypt = signal(false);
+  protected readonly password = signal('');
+  protected readonly password2 = signal('');
+  protected readonly exporting = signal(false);
+  /** Text of a password-protected backup waiting for its password. */
+  protected readonly locked = signal<string | null>(null);
+  protected readonly unlockError = signal<string | null>(null);
+  protected readonly unlocking = signal(false);
   protected readonly pending = signal<BackupData | null>(null);
   protected readonly pendingWarnings = signal<string[]>([]);
   /** The single-file build only exists in deployed builds, not in `ng serve` or inside itself. */
   protected readonly singleFileAvailable = signal(false);
+
+  /** Every tag used on a node or entry, sorted. */
+  protected readonly allTags = computed(() => {
+    const tags = new Set<string>();
+    for (const n of this.data.nodes()) for (const t of n.tags ?? []) tags.add(t);
+    for (const e of this.data.entries()) for (const t of e.tags ?? []) tags.add(t);
+    return [...tags].sort((a, b) => a.localeCompare(b));
+  });
+
+  protected setTagColor(tag: string, color: string | undefined): Promise<void> {
+    return this.data.setTagColor(tag, color);
+  }
 
   protected readonly usageLabel = computed(() => {
     const u = this.storage.usage();
@@ -182,8 +361,20 @@ export class SettingsComponent {
   }
 
   protected async exportBackup(): Promise<void> {
-    await this.backup.exportToFile();
-    this.toast.show('Backup downloaded.');
+    const password = this.encrypt() ? this.password() : undefined;
+    if (password !== undefined) {
+      if (!password) return void this.toast.error('Enter a password for the backup.');
+      if (password !== this.password2()) return void this.toast.error('The passwords do not match.');
+    }
+    this.exporting.set(true);
+    try {
+      await this.backup.exportToFile(password);
+      this.toast.show(password ? 'Encrypted backup downloaded. Keep the password somewhere safe.' : 'Backup downloaded.');
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      this.exporting.set(false);
+    }
   }
 
   protected async pickBackup(ev: Event): Promise<void> {
@@ -192,6 +383,34 @@ export class SettingsComponent {
     input.value = '';
     if (!file) return;
     const res = await this.backup.read(file);
+    this.pending.set(null);
+    if (!res.ok && 'locked' in res) {
+      this.unlockError.set(null);
+      this.locked.set(res.text);
+      // Render the prompt now, so it has focus before the next keystroke.
+      renderNow(this.cdr);
+      return;
+    }
+    this.locked.set(null);
+    this.offerRestore(res);
+  }
+
+  protected async unlock(password: string): Promise<void> {
+    const text = this.locked();
+    if (!text) return;
+    this.unlocking.set(true);
+    this.unlockError.set(null);
+    const res = await this.backup.unlock(text, password);
+    this.unlocking.set(false);
+    if (!res.ok) {
+      this.unlockError.set(res.error);
+      return;
+    }
+    this.locked.set(null);
+    this.offerRestore(res);
+  }
+
+  private offerRestore(res: ParseResult): void {
     if (!res.ok) {
       this.toast.error(res.error);
       return;
@@ -220,6 +439,24 @@ export class SettingsComponent {
   }
   protected setWeekStart(weekStartsOn: number): Promise<void> {
     return this.data.updateSettings({ weekStartsOn });
+  }
+  protected readonly currencies = ['EUR', 'USD', 'CHF', 'GBP', 'CAD', 'AUD', 'JPY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK'];
+  protected readonly roundingSteps = [0, 1, 5, 6, 10, 15, 30, 60];
+
+  protected setCurrency(currency: string): Promise<void> {
+    return this.data.updateSettings({ currency });
+  }
+  protected setRounding(patch: Partial<Rounding>): Promise<void> {
+    const cur = this.data.settings().rounding ?? { minutes: 0, mode: 'up' as const };
+    return this.data.updateSettings({ rounding: { ...cur, ...patch } });
+  }
+
+  protected updateIdle(patch: Partial<Pick<Settings, 'idleGuard' | 'idleAwayMinutes' | 'idleLongRunningHours'>>): Promise<void> {
+    return this.data.updateSettings(patch);
+  }
+  /** Positive number or undefined (falls back to the default). */
+  protected positive(v: number): number | undefined {
+    return Number.isFinite(v) && v > 0 ? v : undefined;
   }
   protected setTemplate(templateId: string): Promise<void> {
     return this.data.updateSettings({ templateId });

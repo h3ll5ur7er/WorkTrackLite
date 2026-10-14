@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, liveQuery } from 'dexie';
 import { BackupData } from '../domain/backup';
+import { planMerge, splitRanges } from '../domain/entry-edit';
 import { TreeIndex, closedSubtreeSeconds, entriesByNode, reorderSiblings } from '../domain/tree';
 import { WORKTRACK_DB, uid } from './db';
 import { Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from './models';
@@ -16,7 +17,8 @@ export interface NewNode {
 }
 
 export type NodePatch = Partial<Omit<Node, 'id' | 'createdAt' | 'updatedAt' | 'parentId' | 'order'>>;
-export type EntryPatch = Partial<Pick<TimeEntry, 'nodeId' | 'start' | 'end' | 'note' | 'tags'>>;
+export type EntryPatch = Partial<Pick<TimeEntry, 'nodeId' | 'start' | 'end' | 'note' | 'tags' | 'billable'>>;
+export type NewEntry = Pick<TimeEntry, 'nodeId' | 'start'> & { end: number } & Pick<TimeEntry, 'note' | 'tags' | 'billable'>;
 
 /**
  * Single source of truth for the UI. Mirrors IndexedDB into signals via
@@ -37,6 +39,8 @@ export class DataService {
   readonly settings = signal<Settings>(DEFAULT_SETTINGS);
   readonly ready = signal(false);
   readonly error = signal<string | null>(null);
+  private readonly readyPromise: Promise<void>;
+  private resolveReady!: () => void;
 
   /** Precomputed hierarchy (children, paths, subtrees). */
   readonly tree = computed(() => new TreeIndex(this.nodes()));
@@ -52,7 +56,13 @@ export class DataService {
   readonly activeTemplate = computed(() => this.templates().find((t) => t.id === this.settings().templateId));
 
   constructor() {
+    this.readyPromise = new Promise((r) => (this.resolveReady = r));
     void this.bootstrap();
+  }
+
+  /** Resolves once the signals mirror the database (for code that runs before the UI). */
+  whenReady(): Promise<void> {
+    return this.readyPromise;
   }
 
   private async bootstrap(): Promise<void> {
@@ -85,6 +95,7 @@ export class DataService {
         ),
       ]);
       this.ready.set(true);
+      this.resolveReady();
     } catch (e) {
       console.error(e);
       this.error.set(
@@ -206,7 +217,7 @@ export class DataService {
   // --- Entries ---------------------------------------------------------------
 
   /** Adds a closed entry. Rejects empty or inverted ranges. */
-  async addEntry(input: { nodeId: string; start: number; end: number; note?: string; tags?: string[] }): Promise<string> {
+  async addEntry(input: NewEntry): Promise<string> {
     assertRange(input.start, input.end);
     const now = Date.now();
     const e: TimeEntry = { id: uid(), ...input, createdAt: now, updatedAt: now };
@@ -237,6 +248,70 @@ export class DataService {
     await this.db.entries.bulkPut(entries);
   }
 
+  /** Undo for split/merge: puts the old versions back and removes entries that were created. */
+  async revertEntries(restore: TimeEntry[], removeIds: string[]): Promise<void> {
+    await this.db.transaction('rw', this.db.entries, async () => {
+      await this.db.entries.bulkDelete(removeIds);
+      await this.db.entries.bulkPut(restore);
+    });
+  }
+
+  /** Splits a closed entry at `at`. Returns the original (for undo) and the id of the second half. */
+  async splitEntry(id: string, at: number): Promise<{ original: TimeEntry; newId: string }> {
+    return this.db.transaction('rw', this.db.entries, async () => {
+      const original = await this.db.entries.get(id);
+      if (!original) throw new Error('Entry no longer exists.');
+      const parts = splitRanges(original, at);
+      if (!parts) throw new Error('Pick a time inside the entry.');
+      const now = Date.now();
+      const newId = uid();
+      await this.db.entries.bulkPut([
+        { ...parts.first, updatedAt: now },
+        { ...parts.second, id: newId, createdAt: now, updatedAt: now },
+      ]);
+      return { original, newId };
+    });
+  }
+
+  /** Merges entries into the earliest one (see `planMerge`). Returns the originals for undo. */
+  async mergeEntries(ids: string[]): Promise<{ originals: TimeEntry[]; mergedId: string; gapMs: number }> {
+    return this.db.transaction('rw', this.db.entries, async () => {
+      const originals = await this.existingEntries(ids);
+      const plan = planMerge(originals);
+      if ('error' in plan) throw new Error(plan.error);
+      await this.db.entries.bulkDelete(plan.removeIds);
+      await this.db.entries.put({ ...plan.merged, updatedAt: Date.now() });
+      return { originals, mergedId: plan.merged.id, gapMs: plan.gapMs };
+    });
+  }
+
+  /** Applies a change to several closed entries at once. Returns the previous versions for undo. */
+  async updateEntries(ids: string[], change: (e: TimeEntry) => EntryPatch): Promise<TimeEntry[]> {
+    return this.db.transaction('rw', this.db.entries, async () => {
+      const originals = await this.existingEntries(ids);
+      if (originals.some((e) => e.end == null)) throw new Error('A running timer cannot be edited together with other entries.');
+      const now = Date.now();
+      const next = originals.map((e) => ({ ...e, ...change(e), updatedAt: now }));
+      for (const e of next) assertRange(e.start, e.end!);
+      await this.db.entries.bulkPut(next);
+      return originals;
+    });
+  }
+
+  async deleteEntries(ids: string[]): Promise<TimeEntry[]> {
+    return this.db.transaction('rw', this.db.entries, async () => {
+      const originals = await this.existingEntries(ids);
+      await this.db.entries.bulkDelete(originals.map((e) => e.id));
+      return originals;
+    });
+  }
+
+  private async existingEntries(ids: string[]): Promise<TimeEntry[]> {
+    const found = await this.db.entries.bulkGet(ids);
+    if (found.some((e) => !e)) throw new Error('Some entries no longer exist.');
+    return found as TimeEntry[];
+  }
+
   // --- Settings --------------------------------------------------------------
 
   /** Atomic read-modify-write so concurrent updates never drop each other's fields. */
@@ -244,6 +319,17 @@ export class DataService {
     await this.db.transaction('rw', this.db.settings, async () => {
       const cur = (await this.db.settings.get('app')) ?? DEFAULT_SETTINGS;
       await this.db.settings.put({ ...DEFAULT_SETTINGS, ...cur, ...patch, id: 'app' });
+    });
+  }
+
+  /** Sets (or with `undefined` clears) one tag's colour, atomically. */
+  async setTagColor(tag: string, color: string | undefined): Promise<void> {
+    await this.db.transaction('rw', this.db.settings, async () => {
+      const cur = { ...DEFAULT_SETTINGS, ...(await this.db.settings.get('app')) };
+      const tagColors = { ...(cur.tagColors ?? {}) };
+      if (color) tagColors[tag] = color;
+      else delete tagColors[tag];
+      await this.db.settings.put({ ...cur, tagColors, id: 'app' });
     });
   }
 

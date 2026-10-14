@@ -41,6 +41,10 @@ export class TreeComponent {
     return this.data.tree().childrenOf(n.id, { includeArchived: this.showArchived() });
   }
 
+  protected colorOf(id: string): string | null {
+    return this.data.tree().colorOf(id);
+  }
+
   protected isVisible(id: string): boolean {
     const v = this.visibleIds();
     return !v || v.has(id);

@@ -31,6 +31,10 @@ export interface SeedNode {
   budget?: { type: 'none' | 'target' | 'fixed'; seconds: number; softLimit?: number };
   archived?: boolean;
   order?: number;
+  tags?: string[];
+  color?: string;
+  rate?: number;
+  billable?: boolean;
 }
 export interface SeedEntry {
   id: string;
@@ -38,6 +42,8 @@ export interface SeedEntry {
   start: number;
   end: number | null;
   note?: string;
+  tags?: string[];
+  billable?: boolean;
 }
 
 /** A backup file in the app's JSON format. */

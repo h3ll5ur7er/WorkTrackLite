@@ -123,3 +123,18 @@ describe('reorderSiblings', () => {
     expect(ids(reorderSiblings(sibs('a', 'b*'), 'b', -1))).toEqual(['b', 'a']);
   });
 });
+
+describe('TreeIndex.colorOf', () => {
+  it('inherits the nearest ancestor colour', () => {
+    const t = new TreeIndex([
+      makeNode({ id: 'a', color: '#ef4444' }),
+      makeNode({ id: 'b', parentId: 'a' }),
+      makeNode({ id: 'c', parentId: 'b', color: '#22c55e' }),
+      makeNode({ id: 'd', parentId: 'c' }),
+      makeNode({ id: 'x' }),
+    ]);
+    expect(t.colorOf('b')).toBe('#ef4444');
+    expect(t.colorOf('d')).toBe('#22c55e');
+    expect(t.colorOf('x')).toBeNull();
+  });
+});

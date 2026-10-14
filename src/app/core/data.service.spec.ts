@@ -103,6 +103,12 @@ describe('DataService', () => {
     expect(await db.settings.get('app')).toMatchObject({ theme: 'light', lastNodeId: 'x', weekStartsOn: 0 });
   });
 
+  it('tag colours: concurrent edits all land, and undefined removes one', async () => {
+    await Promise.all([data.setTagColor('a', '#ef4444'), data.setTagColor('b', '#22c55e'), data.setTagColor('c', '#3b82f6')]);
+    await data.setTagColor('b', undefined);
+    expect((await db.settings.get('app'))?.tagColors).toEqual({ a: '#ef4444', c: '#3b82f6' });
+  });
+
   it('snapshot → replaceAll restores the same data', async () => {
     const a = await data.addNode({ parentId: null, name: 'A', kind: 'K', tags: ['t'] });
     await data.addEntry({ nodeId: a, start: 0, end: 1000, note: 'n' });
@@ -119,6 +125,66 @@ describe('DataService', () => {
     const b = await data.addNode({ parentId: a, name: 'B', kind: 'K' });
     await data.addEntry({ nodeId: b, start: 0, end: 60_000 });
     await waitFor(() => data.closedSubtreeSeconds().get(a) === 60);
+  });
+
+  describe('split, merge and bulk edits', () => {
+    const H = 3_600_000;
+    const T = new Date(2026, 9, 20, 9).getTime();
+
+    it('splits an entry and undoes the split', async () => {
+      await db.entries.add(makeEntry({ id: 'e', nodeId: 'n', start: T, end: T + 2 * H, note: 'x', billable: false }));
+      const { original, newId } = await data.splitEntry('e', T + H / 2);
+      const [first, second] = [await db.entries.get('e'), await db.entries.get(newId)];
+      expect([first!.start, first!.end]).toEqual([T, T + H / 2]);
+      expect(second).toMatchObject({ nodeId: 'n', start: T + H / 2, end: T + 2 * H, note: 'x', billable: false });
+
+      await data.revertEntries([original], [newId]);
+      expect(await db.entries.toArray()).toEqual([original]);
+    });
+
+    it('refuses to split outside the entry or a running timer', async () => {
+      await db.entries.bulkAdd([makeEntry({ id: 'e', nodeId: 'n', start: T }), makeEntry({ id: 'r', nodeId: 'n', start: T, end: null })]);
+      await expect(data.splitEntry('e', T)).rejects.toThrow('inside');
+      await expect(data.splitEntry('r', T + H)).rejects.toThrow('inside');
+      expect(await db.entries.count()).toBe(2);
+    });
+
+    it('merges entries and undoes the merge', async () => {
+      const a = makeEntry({ id: 'a', nodeId: 'n', start: T, end: T + H });
+      const b = makeEntry({ id: 'b', nodeId: 'n', start: T + H, end: T + 2 * H });
+      await db.entries.bulkAdd([a, b]);
+      const { originals, mergedId } = await data.mergeEntries(['b', 'a']);
+      expect(mergedId).toBe('a');
+      expect(await db.entries.toArray()).toEqual([expect.objectContaining({ id: 'a', start: T, end: T + 2 * H })]);
+
+      await data.revertEntries(originals, []);
+      expect(await db.entries.orderBy('start').toArray()).toEqual([a, b]);
+    });
+
+    it('a refused merge changes nothing', async () => {
+      await db.entries.bulkAdd([makeEntry({ id: 'a', nodeId: 'n', start: T }), makeEntry({ id: 'b', nodeId: 'm', start: T + H })]);
+      await expect(data.mergeEntries(['a', 'b'])).rejects.toThrow('same node');
+      expect(await db.entries.count()).toBe(2);
+    });
+
+    it('bulk updates are all-or-nothing', async () => {
+      await db.entries.bulkAdd([makeEntry({ id: 'a', nodeId: 'n', start: T }), makeEntry({ id: 'b', nodeId: 'n', start: T + H })]);
+      const before = await data.updateEntries(['a', 'b'], (e) => ({ start: e.start + H, end: e.end! + H }));
+      expect(before.map((e) => e.start)).toEqual([T, T + H]);
+      expect((await db.entries.orderBy('start').toArray()).map((e) => e.start)).toEqual([T + H, T + 2 * H]);
+
+      // One invalid result rejects the whole batch.
+      await expect(data.updateEntries(['a', 'b'], (e) => (e.id === 'b' ? { end: e.start } : { nodeId: 'm' }))).rejects.toThrow();
+      expect((await db.entries.toArray()).map((e) => e.nodeId)).toEqual(['n', 'n']);
+      await expect(data.updateEntries(['a', 'gone'], () => ({ nodeId: 'm' }))).rejects.toThrow('no longer exist');
+    });
+
+    it('deletes several entries', async () => {
+      await db.entries.bulkAdd([makeEntry({ id: 'a', nodeId: 'n', start: T }), makeEntry({ id: 'b', nodeId: 'n', start: T + H })]);
+      const removed = await data.deleteEntries(['a', 'b']);
+      expect(removed.map((e) => e.id)).toEqual(['a', 'b']);
+      expect(await db.entries.count()).toBe(0);
+    });
   });
 });
 

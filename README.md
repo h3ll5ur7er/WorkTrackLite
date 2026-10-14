@@ -14,12 +14,22 @@ file** you can open straight from disk.
   `none` (track only), `target` (count up towards a goal) or `fixed` (burns down,
   goes negative on overshoot), each with an optional early-warning threshold.
 - **Dashboard** of leaf nodes with burn-down charts. Click a card to start or
-  stop its timer; every timer action can be undone.
-- **Weekly schedule** with drag-to-move, resize, snapping (15 min, or 1 min with
-  <kbd>Shift</kbd>), copy/paste, drag-from-tree and a live running timer.
+  stop its timer; every timer action can be undone. The running timer also shows
+  in the tab title and on the installed app's icon.
+- **Schedule** as day, 3-day or week view (automatic by screen size) with
+  drag-to-move, resize, snapping (15 min, or 1 min with <kbd>Shift</kbd>),
+  copy/paste, drag-from-tree, split and merge, and multi-select to move, reassign
+  or delete several entries at once.
+- **Forgotten-timer guard**: after sleep, a closed tab, 8 h+ or midnight, it asks
+  whether to drop the away time, stop at a chosen time, or keep it.
+- **Colours** per node (inherited) and per tag.
+- **Reports** for any date range, grouped by node, day or tag, with CSV export.
+- **Billing**: hourly rates and billable flags (inherited), per-entry rounding,
+  amounts in reports and CSV.
 - **Command palette** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>) for navigation, timers and commands.
-- **JSON backup / restore** and a request for persistent storage, so the browser
-  does not silently evict your data. **CSV export** per node or subtree.
+- **JSON backup / restore**, optionally encrypted with a password (AES-256-GCM,
+  PBKDF2), and a request for persistent storage, so the browser does not silently
+  evict your data. **CSV export** per node or subtree.
 - Dark / light / system theme, keyboard and screen-reader friendly, touch support
   (long-press opens context menus).
 
@@ -70,7 +80,5 @@ backup** regularly; restore works on any device. See
 
 ## Roadmap ideas
 
-- Hourly rates and invoicing reports
-- Idle detection / "you forgot to stop the timer"
 - Optional sync (e.g. via a user-provided WebDAV/S3 bucket) and encryption at rest
-- Reports view (per week / month / tag)
+- Invoices (PDF) from a report

@@ -67,6 +67,33 @@ export class TreeIndex {
     return out;
   }
 
+  /** The node's colour, or its nearest coloured ancestor's (null if none). */
+  colorOf(id: string): string | null {
+    for (const nid of [id, ...this.ancestorIds(id)]) {
+      const c = this.byId.get(nid)?.color;
+      if (c) return c;
+    }
+    return null;
+  }
+
+  /** Hourly rate of the node or its nearest ancestor with one (null if none). */
+  rateOf(id: string): number | null {
+    for (const nid of [id, ...this.ancestorIds(id)]) {
+      const r = this.byId.get(nid)?.rate;
+      if (r !== undefined) return r;
+    }
+    return null;
+  }
+
+  /** Billable flag of the node or its nearest ancestor that sets it (default true). */
+  billableOf(id: string): boolean {
+    for (const nid of [id, ...this.ancestorIds(id)]) {
+      const b = this.byId.get(nid)?.billable;
+      if (b !== undefined) return b;
+    }
+    return true;
+  }
+
   /** Names from the root down to the node itself. */
   pathNames(id: string): string[] {
     const cached = this.pathCache.get(id);

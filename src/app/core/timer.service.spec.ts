@@ -82,6 +82,13 @@ describe('TimerService', () => {
     expect(resumed.started?.nodeId).toBe(nodeB);
   });
 
+  it('does not resume an archived node', async () => {
+    await timer.start(nodeA);
+    await timer.stop();
+    await data.setArchived(nodeA, true);
+    expect((await timer.resumeLast()).started).toBeNull();
+  });
+
   it('exposes the running entry through signals', async () => {
     await timer.start(nodeA);
     await waitFor(() => timer.running()?.nodeId === nodeA);

@@ -42,18 +42,43 @@
     </ng-template>
   </aside>
 
-  <section class="sched__main" aria-label="Week calendar">
+  <section class="sched__main" aria-label="Calendar" [style.--days]="days().length">
     <header class="sched__header">
       <div class="sched__nav">
-        <button type="button" class="btn" (click)="prevWeek()" aria-label="Previous week">‹</button>
-        <button type="button" class="btn" (click)="thisWeek()">This week</button>
-        <button type="button" class="btn" (click)="nextWeek()" aria-label="Next week">›</button>
+        <button type="button" class="btn" (click)="prevPage()" [attr.aria-label]="'Previous ' + pageLabel()">‹</button>
+        <button type="button" class="btn" (click)="today()">Today</button>
+        <button type="button" class="btn" (click)="nextPage()" [attr.aria-label]="'Next ' + pageLabel()">›</button>
       </div>
-      <div class="sched__week-label" aria-live="polite" data-testid="week-label">{{ days()[0].label }} – {{ days()[6].label }}</div>
+      <div class="sched__week-label" aria-live="polite" data-testid="week-label">{{ rangeLabel() }}</div>
       <div class="sched__actions">
-        <button type="button" class="btn btn--primary" (click)="openEditor(null)">+ New entry</button>
+        <label class="visually-hidden" for="sched-view">View</label>
+        <select id="sched-view" class="input sched__view" (change)="setViewSetting($any($event.target).value)">
+          <option value="auto" [selected]="viewSetting() === 'auto'">Auto ({{ pageLabel() }})</option>
+          <option value="day" [selected]="viewSetting() === 'day'">Day</option>
+          <option value="3day" [selected]="viewSetting() === '3day'">3 days</option>
+          <option value="week" [selected]="viewSetting() === 'week'">Week</option>
+        </select>
+        <button type="button" class="btn btn--primary" (click)="openEditor(null)">+ New<span class="sched__long"> entry</span></button>
       </div>
     </header>
+
+    @if (selecting()) {
+      <div class="sched__selection" role="toolbar" aria-label="Selected entries">
+        <span class="sched__selection-count" data-testid="selection-count" aria-live="polite"
+          >{{ selectedEntries().length }} selected · {{ formatHM(selectedSeconds()) }}</span
+        >
+        <label class="visually-hidden" for="sched-move-to">Move selected entries to</label>
+        <select id="sched-move-to" class="input" (change)="reassignSelection($any($event.target))">
+          <option value="">Move to…</option>
+          @for (n of assignableNodes(); track n.id) {
+            <option [value]="n.id">{{ n.label }}</option>
+          }
+        </select>
+        <button type="button" class="btn" (click)="mergeSelection()">Merge</button>
+        <button type="button" class="btn btn--danger" (click)="deleteSelection()">Delete</button>
+        <button type="button" class="btn btn--ghost" (click)="clearSelection()" title="Clear selection (Esc)">Done</button>
+      </div>
+    }
 
     <div class="sched__day-row">
       <div class="sched__gutter-spacer"></div>
@@ -106,10 +131,14 @@
                 [class.block--running]="seg.entry.end === null"
                 [class.block--overlap]="seg.overlap"
                 [class.block--dragging]="isPreviewing(seg)"
+                [class.block--selected]="isSelected(seg.entry.id)"
+                [attr.aria-pressed]="selecting() && seg.entry.end !== null ? isSelected(seg.entry.id) : null"
                 [style.top.%]="(seg.topMin / 1440) * 100"
                 [style.height.%]="(seg.heightMin / 1440) * 100"
                 [style.left.%]="(100 / seg.laneCount) * seg.lane"
                 [style.width.%]="100 / seg.laneCount"
+                [style.background]="seg.entry.end === null ? null : blockColor(seg).bg"
+                [style.color]="seg.entry.end === null ? null : blockColor(seg).fg"
                 (pointerdown)="onBlockPointerDown($event, seg, 'move')"
                 (click)="onBlockClick($event, seg)"
                 (keydown)="onBlockKey($event, seg)"

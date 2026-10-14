@@ -50,5 +50,8 @@
     </nav>
   }
 
+  @if (idle.pending()) {
+    <app-idle-dialog />
+  }
   <app-toasts />
 </div>

@@ -7,16 +7,20 @@ import { Budget, BudgetType, Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
 import { entryDurationSeconds, reportForBudget } from '../../domain/budget';
+import { DEFAULT_CURRENCY, formatMoney, totalAmount } from '../../domain/billing';
 import { entriesToCsv } from '../../domain/csv';
+import { clipToRange } from '../../domain/reports';
 import { formatHMS, parseTags } from '../../domain/format';
 import { MS_PER_HOUR } from '../../domain/time';
 import { liveSubtreeSeconds, reorderSiblings } from '../../domain/tree';
 import { downloadFile, safeFileName } from '../../shared/download';
-import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
+import { ColorPickerComponent } from '../../shared/ui/color-picker.component';
+import { EntryDraft, EntryEditorComponent, draftFields } from '../../shared/ui/entry-editor.component';
+import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 
 @Component({
   selector: 'app-node-detail',
-  imports: [DatePipe, EntryEditorComponent],
+  imports: [DatePipe, EntryEditorComponent, ColorPickerComponent, TagChipsComponent],
   templateUrl: './node-detail.component.html',
   styleUrl: './node-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -132,6 +136,43 @@ export class NodeDetailComponent {
   protected setKind(kind: string): Promise<void> {
     return this.patch({ kind: kind.trim() || 'Item' });
   }
+  /** Colour the node would get from its ancestors if it had none itself. */
+  protected readonly inheritedColor = computed(() => {
+    const n = this.node();
+    return n?.parentId ? this.tree().colorOf(n.parentId) : null;
+  });
+
+  protected readonly currency = computed(() => this.data.settings().currency ?? DEFAULT_CURRENCY);
+  protected readonly inheritedRate = computed(() => {
+    const n = this.node();
+    return n?.parentId ? this.tree().rateOf(n.parentId) : null;
+  });
+  protected readonly inheritedBillable = computed(() => {
+    const n = this.node();
+    return n?.parentId ? this.tree().billableOf(n.parentId) : true;
+  });
+
+  /** Money view of the budget and of all billable time in the subtree (when a rate applies). */
+  protected readonly value = computed(() => {
+    const n = this.node();
+    const rate = n ? this.tree().rateOf(n.id) : null;
+    if (!n || rate === null) return null;
+    const pieces = clipToRange(this.subtreeEntries(), { from: -Infinity, to: Infinity }, this.timer.minute());
+    const tracked = totalAmount(this.tree(), pieces, this.data.settings().rounding).amount;
+    const budget = n.budget.type !== 'none' && n.budget.seconds > 0 ? (n.budget.seconds / 3600) * rate : null;
+    return { tracked: formatMoney(tracked, this.currency()), budget: budget === null ? null : formatMoney(budget, this.currency()) };
+  });
+
+  protected setRate(v: number): Promise<void> {
+    return this.patch({ rate: Number.isFinite(v) && v >= 0 ? v : undefined });
+  }
+  protected setBillable(v: string): Promise<void> {
+    return this.patch({ billable: v === 'yes' ? true : v === 'no' ? false : undefined });
+  }
+
+  protected setColor(color: string | undefined): Promise<void> {
+    return this.patch({ color });
+  }
   protected setNotes(notes: string): Promise<void> {
     return this.patch({ notes: notes.trim() ? notes : undefined });
   }
@@ -219,18 +260,12 @@ export class NodeDetailComponent {
 
   protected editEntry(e: TimeEntry): void {
     if (e.end == null) return;
-    this.showEditor({ id: e.id, nodeId: e.nodeId, start: e.start, end: e.end, note: e.note, tags: e.tags });
+    this.showEditor({ id: e.id, nodeId: e.nodeId, start: e.start, end: e.end, note: e.note, tags: e.tags, billable: e.billable });
   }
 
   protected async saveEntry(d: EntryDraft): Promise<void> {
     try {
-      const fields = {
-        nodeId: d.nodeId!,
-        start: d.start,
-        end: d.end,
-        note: d.note || undefined,
-        tags: d.tags?.length ? d.tags : undefined,
-      };
+      const fields = draftFields(d);
       if (d.id) await this.data.updateEntry(d.id, fields);
       else await this.data.addEntry(fields);
       this.editor.set(null);
@@ -249,7 +284,7 @@ export class NodeDetailComponent {
     const n = this.node();
     if (!n) return;
     const entries = scope === 'node' ? this.ownEntries() : this.subtreeEntries();
-    const csv = entriesToCsv(entries, this.tree(), Date.now());
+    const csv = entriesToCsv(entries, this.tree(), Date.now(), this.data.settings().rounding);
     downloadFile(`worktracklite_${safeFileName(n.name)}_${scope}.csv`, csv, 'text/csv;charset=utf-8');
   }
 

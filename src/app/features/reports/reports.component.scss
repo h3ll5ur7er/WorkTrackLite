@@ -1,0 +1,127 @@
+:host {
+  display: block;
+}
+.rep {
+  padding: 16px 20px 32px;
+  max-width: 980px;
+}
+h1 {
+  font-size: 1.3rem;
+  margin: 0 0 10px;
+}
+.rep__toolbar {
+  margin-bottom: 12px;
+}
+.rep__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.rep__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.rep__dates .field {
+  min-width: 150px;
+}
+.rep__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin: 14px 0;
+}
+.rep__total {
+  display: flex;
+  flex-direction: column;
+  strong {
+    font-size: 1.6rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.rep__group {
+  display: flex;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rep__tab {
+  font: inherit;
+  padding: 5px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--c-fg-3);
+  cursor: pointer;
+  &[aria-pressed='true'] {
+    background: var(--c-accent-bg);
+    color: var(--c-accent);
+  }
+}
+.rep__exports {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.rep__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  th,
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--c-border);
+    text-align: left;
+  }
+  th {
+    color: var(--c-fg-3);
+    font-weight: 500;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .share {
+    width: 35%;
+    white-space: nowrap;
+  }
+}
+.rep__row--root td {
+  font-weight: 600;
+}
+.rep__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.rep__bar {
+  display: inline-block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--c-accent);
+  vertical-align: middle;
+  max-width: calc(100% - 52px);
+}
+.rep__pct {
+  margin-left: 6px;
+  color: var(--c-fg-3);
+  font-size: 0.8rem;
+}
+.rep__chip {
+  font-size: 0.75rem;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+}
+.rep__note {
+  font-size: 0.8rem;
+  margin: 8px 0 0;
+}

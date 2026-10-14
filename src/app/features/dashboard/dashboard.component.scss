@@ -50,6 +50,9 @@
 .card {
   background: var(--c-bg-2);
   border: 1px solid var(--c-border);
+  border-left-width: 4px;
+  // The colour stripe must survive the state colours (running/over budget) below.
+  border-left-color: var(--node-color, var(--c-border)) !important;
   border-radius: 10px;
   padding: 12px 14px;
   position: relative;

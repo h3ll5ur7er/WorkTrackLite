@@ -18,19 +18,31 @@ src/app/
     storage.service.ts persistent-storage request + usage
     theme.service.ts   dark / light / system
     toast.service.ts   notifications with optional "Undo"
+    presence.service.ts  running timer in the tab title + app badge
+    idle.service.ts    forgotten-timer guard (localStorage heartbeat)
+    shortcut-actions.ts  #/action/:name for app-icon shortcuts
   domain/              pure functions, no Angular or DB: unit-test these
     time.ts            DST-safe calendar math (never add 24h to change days)
     tree.ts            TreeIndex (children, paths, subtrees) + time aggregation
     budget.ts          budget reports
     csv.ts             CSV export (RFC 4180, formula-injection safe)
     backup.ts          backup file format: create, validate, migrate
+    backup-crypto.ts   password-encrypted backup envelope (WebCrypto)
     schedule-layout.ts calendar segments, overlap lanes, snapping
     burndown.ts        dashboard chart geometry
     entries.ts         entry invariants (one running timer)
+    presence.ts        tab-title text for a running timer
+    idle.ts            when to ask about a forgotten timer
+    color.ts           palette, #rrggbb validation, readable text colour
+    reports.ts         date-range presets, clipping, group by node/day/tag
+    billing.ts         rates, billable flags, rounding, amounts, money format
+    schedule-view.ts   day/3-day/week view: auto choice, range start, paging
+    entry-edit.ts      split, merge plans and neighbours, shifting entries
   features/            one folder per route (+ the first-run setup)
-    dashboard/  schedule/  manage/  settings/  setup/
+    dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command
-                       palette, timer bar, toasts, long-press directive
+                       palette, timer bar, toasts, long-press directive,
+                       colour picker, tag chips, idle dialog, password prompt
   testing/             helpers for unit tests (fresh DB per test, factories)
 e2e/                   Playwright tests against the production build
 scripts/               single-file inliner, static server for e2e
@@ -77,6 +89,16 @@ Schema changes need two steps, both covered by tests:
 A backup is `{ app: 'worktracklite', formatVersion, exportedAt, nodes, entries,
 templates, settings }`. Import replaces all data in one transaction.
 
+A password-protected backup wraps that JSON text (`domain/backup-crypto.ts`):
+`{ app, encrypted: 1, kdf: { PBKDF2, SHA-256, iterations, salt }, cipher:
+{ AES-GCM, iv }, data }`, all binary values base64. The key is derived with
+PBKDF2 (600k iterations, NFC-normalised password) and a fresh salt and IV are
+used for every export. Import recognises the envelope, asks for the password
+and then runs the normal validation and migration on the decrypted text, so the
+envelope does not need a version bump when the backup format changes. WebCrypto
+needs a secure context (https, localhost or `file://`); elsewhere the option is
+hidden.
+
 ## Time zones
 
 All calendar math goes through `domain/time.ts` (local-time `Date` setters).
@@ -113,7 +135,7 @@ page error.
 
 ## Recipes
 
-**Add a field to nodes** (e.g. an hourly rate)
+**Add a field to nodes** (as done for `color`, `rate` and `billable`)
 
 1. Add it to `Node` in `core/models.ts` (optional, so old data stays valid).
 2. If it needs an index or a data fix, add a Dexie version; otherwise nothing.
