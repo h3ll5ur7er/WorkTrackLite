@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DataService } from '../../core/data.service';
 import { TimerService } from '../../core/timer.service';
+import { DEFAULT_CURRENCY, amountsByNode, formatMoney, totalAmount } from '../../domain/billing';
 import { readableTextColor } from '../../domain/color';
 import { entriesToCsv, tableToCsv } from '../../domain/csv';
 import { formatHM } from '../../domain/format';
@@ -81,6 +82,20 @@ export class ReportsComponent {
 
   protected readonly total = computed(() => totalSecondsOf(this.pieces()));
 
+  private readonly rounding = computed(() => this.data.settings().rounding);
+  protected readonly currency = computed(() => this.data.settings().currency ?? DEFAULT_CURRENCY);
+  /** Billing is shown only when some node has a rate. */
+  protected readonly hasRates = computed(() => this.data.nodes().some((n) => n.rate !== undefined));
+  protected readonly totalMoney = computed(() => totalAmount(this.data.tree(), this.pieces(), this.rounding()));
+  private readonly amounts = computed(() => amountsByNode(this.data.tree(), this.pieces(), this.rounding()));
+
+  protected money(amount: number): string {
+    return formatMoney(amount, this.currency());
+  }
+  protected amountFor(nodeId: string): number {
+    return this.amounts().get(nodeId)?.amount ?? 0;
+  }
+
   protected readonly nodeRows = computed(() => {
     const tree = this.data.tree();
     const scope = this.scope();
@@ -139,9 +154,19 @@ export class ReportsComponent {
     let csv: string;
     if (this.groupBy() === 'node') {
       const tree = this.data.tree();
+      const amounts = this.amounts();
       csv = tableToCsv(
-        ['node_path', 'own_hours', 'total_hours'],
-        this.nodeRows().map((r) => [r.nodeId ? tree.pathLabel(r.nodeId) : r.name, hours(r.ownSeconds), hours(r.totalSeconds)]),
+        ['node_path', 'own_hours', 'total_hours', 'billable_hours', `amount_${this.currency()}`],
+        this.nodeRows().map((r) => {
+          const a = amounts.get(r.nodeId);
+          return [
+            r.nodeId ? tree.pathLabel(r.nodeId) : r.name,
+            hours(r.ownSeconds),
+            hours(r.totalSeconds),
+            hours(a?.billableSeconds ?? 0),
+            a?.amount ?? 0,
+          ];
+        }),
       );
     } else if (this.groupBy() === 'day') {
       csv = tableToCsv(
@@ -162,7 +187,7 @@ export class ReportsComponent {
     const clipped = this.pieces().map((p) => ({ ...p.entry, start: p.from, end: p.to }));
     downloadFile(
       `worktracklite_entries_${this.fileSuffix()}.csv`,
-      entriesToCsv(clipped, this.data.tree(), Date.now()),
+      entriesToCsv(clipped, this.data.tree(), Date.now(), this.rounding()),
       'text/csv;charset=utf-8',
     );
   }

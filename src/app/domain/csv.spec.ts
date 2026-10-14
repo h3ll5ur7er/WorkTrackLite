@@ -7,7 +7,9 @@ describe('entriesToCsv', () => {
   it('emits a header and RFC 4180-quoted rows', () => {
     const csv = entriesToCsv([makeEntry({ id: 'e1', nodeId: 'b', start: 0, end: 3_600_000, note: 'has "quotes" and , comma' })], nodes, 0);
     const lines = csv.trim().split('\n');
-    expect(lines[0]).toBe('entry_id,node_id,node_path,kind,start_iso,end_iso,duration_seconds,duration_hours,note,tags');
+    expect(lines[0]).toBe(
+      'entry_id,node_id,node_path,kind,start_iso,end_iso,duration_seconds,duration_hours,note,tags,billable,rate,amount',
+    );
     expect(lines[1]).toContain('"Acme, Inc. / Site"');
     expect(lines[1]).toContain('"has ""quotes"" and , comma"');
     expect(lines[1]).toContain(',3600,1.0000,');
@@ -39,6 +41,21 @@ describe('entriesToCsv', () => {
       .slice(1)
       .map((l) => l.split(',')[0]);
     expect(ids).toEqual(['early', 'late']);
+  });
+});
+
+describe('entriesToCsv billing columns', () => {
+  it('adds billable, inherited rate and the (rounded) amount', () => {
+    const nodes = [makeNode({ id: 'a', rate: 100 }), makeNode({ id: 'b', parentId: 'a' }), makeNode({ id: 'c', billable: false })];
+    const csv = entriesToCsv(
+      [makeEntry({ id: 'x', nodeId: 'b', start: 0, end: 20 * 60_000 }), makeEntry({ id: 'y', nodeId: 'c', start: 0, end: 60_000 })],
+      nodes,
+      0,
+      { minutes: 15, mode: 'up' },
+    );
+    const [, x, y] = csv.trim().split('\n');
+    expect(x.endsWith(',yes,100,50.00')).toBe(true);
+    expect(y.endsWith(',no,,')).toBe(true);
   });
 });
 

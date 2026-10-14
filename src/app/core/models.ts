@@ -34,6 +34,10 @@ export interface Node {
   budget: Budget;
   /** #rrggbb; children without their own colour inherit it. */
   color?: string;
+  /** Hourly rate in the settings currency; children without their own rate inherit it. */
+  rate?: number;
+  /** Whether time here is billable (inherited; default true). */
+  billable?: boolean;
   /** Archived nodes are hidden from the dashboard, palette and pickers but keep their history. */
   archived?: boolean;
   /**
@@ -54,6 +58,8 @@ export interface TimeEntry {
   end: number | null;
   note?: string;
   tags?: string[];
+  /** Overrides the node's billable flag for this entry. */
+  billable?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -86,6 +92,15 @@ export interface Settings {
   idleLongRunningHours?: number;
   /** Tag name → #rrggbb. */
   tagColors?: Record<string, string>;
+  /** ISO 4217 code for amounts (default EUR). */
+  currency?: string;
+  /** Billing rounding per entry; minutes 0 = exact. */
+  rounding?: Rounding;
+}
+
+export interface Rounding {
+  minutes: number;
+  mode: 'up' | 'nearest' | 'down';
 }
 
 export const DEFAULT_SETTINGS: Settings = { id: 'app', theme: 'system', weekStartsOn: 1 };

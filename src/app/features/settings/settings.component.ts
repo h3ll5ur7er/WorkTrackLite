@@ -3,7 +3,7 @@ import { DatePipe } from '@angular/common';
 import { BackupService } from '../../core/backup.service';
 import { DataService } from '../../core/data.service';
 import { IdleService } from '../../core/idle.service';
-import { Settings, ThemePreference } from '../../core/models';
+import { Rounding, Settings, ThemePreference } from '../../core/models';
 import { StorageService } from '../../core/storage.service';
 import { ToastService } from '../../core/toast.service';
 import { BackupData } from '../../domain/backup';
@@ -107,6 +107,44 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
             </select>
           </label>
         </div>
+      </section>
+
+      <section class="panel" aria-labelledby="s-billing">
+        <h2 id="s-billing">Billing</h2>
+        <div class="grid">
+          <label class="field">
+            <span>Currency</span>
+            <select (change)="setCurrency($any($event.target).value)">
+              @for (c of currencies; track c) {
+                <option [value]="c" [selected]="(data.settings().currency ?? 'EUR') === c">{{ c }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span>Round each entry to</span>
+            <select (change)="setRounding({ minutes: +$any($event.target).value })">
+              @for (m of roundingSteps; track m) {
+                <option [value]="m" [selected]="(data.settings().rounding?.minutes ?? 0) === m">
+                  {{ m ? m + ' min' : 'Exact (no rounding)' }}
+                </option>
+              }
+            </select>
+          </label>
+          @if (data.settings().rounding?.minutes) {
+            <label class="field">
+              <span>Rounding direction</span>
+              <select (change)="setRounding({ mode: $any($event.target).value })">
+                <option value="up" [selected]="data.settings().rounding?.mode === 'up'">Up</option>
+                <option value="nearest" [selected]="data.settings().rounding?.mode === 'nearest'">Nearest</option>
+                <option value="down" [selected]="data.settings().rounding?.mode === 'down'">Down</option>
+              </select>
+            </label>
+          }
+        </div>
+        <p class="muted">
+          Rates and the billable flag are set per node in Manage and inherited by children. Rounding applies to amounts in reports and CSV
+          exports, not to tracked time.
+        </p>
       </section>
 
       <section class="panel" aria-labelledby="s-tags">
@@ -303,6 +341,17 @@ export class SettingsComponent {
   protected setWeekStart(weekStartsOn: number): Promise<void> {
     return this.data.updateSettings({ weekStartsOn });
   }
+  protected readonly currencies = ['EUR', 'USD', 'CHF', 'GBP', 'CAD', 'AUD', 'JPY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK'];
+  protected readonly roundingSteps = [0, 1, 5, 6, 10, 15, 30, 60];
+
+  protected setCurrency(currency: string): Promise<void> {
+    return this.data.updateSettings({ currency });
+  }
+  protected setRounding(patch: Partial<Rounding>): Promise<void> {
+    const cur = this.data.settings().rounding ?? { minutes: 0, mode: 'up' as const };
+    return this.data.updateSettings({ rounding: { ...cur, ...patch } });
+  }
+
   protected updateIdle(patch: Partial<Pick<Settings, 'idleGuard' | 'idleAwayMinutes' | 'idleLongRunningHours'>>): Promise<void> {
     return this.data.updateSettings(patch);
   }

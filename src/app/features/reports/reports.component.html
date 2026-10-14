@@ -40,6 +40,12 @@
       <span class="muted">Total</span>
       <strong data-testid="report-total">{{ formatHM(total()) }}</strong>
     </div>
+    @if (hasRates()) {
+      <div class="rep__total">
+        <span class="muted">Billable · {{ formatHM(totalMoney().billableSeconds) }}</span>
+        <strong data-testid="report-amount">{{ money(totalMoney().amount) }}</strong>
+      </div>
+    }
     <div class="rep__group" role="group" aria-label="Group by">
       @for (g of ['node', 'day', 'tag']; track g) {
         <button type="button" class="rep__tab" [attr.aria-pressed]="groupBy() === g" (click)="groupBy.set($any(g))">By {{ g }}</button>
@@ -61,6 +67,9 @@
                 <th scope="col">Node</th>
                 <th scope="col" class="num">Own</th>
                 <th scope="col" class="num">Total</th>
+                @if (hasRates()) {
+                  <th scope="col" class="num">Amount</th>
+                }
                 <th scope="col" class="share">Share</th>
               </tr>
             </thead>
@@ -72,6 +81,9 @@
                   </td>
                   <td class="num">{{ r.ownSeconds ? formatHM(r.ownSeconds) : '' }}</td>
                   <td class="num">{{ formatHM(r.totalSeconds) }}</td>
+                  @if (hasRates()) {
+                    <td class="num">{{ amountFor(r.nodeId) ? money(amountFor(r.nodeId)) : '' }}</td>
+                  }
                   <td class="share">
                     <span class="rep__bar" [style.width.%]="percent(r.totalSeconds)" [style.background]="nodeColor(r.nodeId)"></span>
                     <span class="rep__pct">{{ percent(r.totalSeconds) }}%</span>

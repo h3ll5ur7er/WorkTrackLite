@@ -83,6 +83,18 @@
             </dd>
           </div>
         }
+        @if (value(); as v) {
+          <div class="report__row">
+            <dt>Billable value tracked</dt>
+            <dd class="report__value" data-testid="tracked-value">{{ v.tracked }}</dd>
+          </div>
+          @if (v.budget) {
+            <div class="report__row">
+              <dt>{{ r.type === 'fixed' ? 'Budget value' : 'Target value' }}</dt>
+              <dd class="report__value">{{ v.budget }}</dd>
+            </div>
+          }
+        }
       </dl>
       @if (r.type !== 'none' && r.budgetSeconds > 0) {
         <div
@@ -102,6 +114,31 @@
         </div>
       }
     }
+  </section>
+
+  <section class="panel" aria-labelledby="nd-billing">
+    <h2 id="nd-billing">Billing</h2>
+    <div class="grid">
+      <label class="field">
+        <span>Hourly rate ({{ currency() }})</span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          [value]="n.rate ?? ''"
+          [placeholder]="inheritedRate() !== null ? 'Inherits ' + inheritedRate() : 'No rate'"
+          (change)="setRate($any($event.target).valueAsNumber)"
+        />
+      </label>
+      <label class="field">
+        <span>Billable</span>
+        <select (change)="setBillable($any($event.target).value)">
+          <option value="" [selected]="n.billable === undefined">Inherit ({{ inheritedBillable() ? 'billable' : 'not billable' }})</option>
+          <option value="yes" [selected]="n.billable === true">Billable</option>
+          <option value="no" [selected]="n.billable === false">Not billable</option>
+        </select>
+      </label>
+    </div>
   </section>
 
   <section class="panel" aria-labelledby="nd-details">

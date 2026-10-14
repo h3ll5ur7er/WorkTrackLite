@@ -34,6 +34,7 @@ src/app/
     idle.ts            when to ask about a forgotten timer
     color.ts           palette, #rrggbb validation, readable text colour
     reports.ts         date-range presets, clipping, group by node/day/tag
+    billing.ts         rates, billable flags, rounding, amounts, money format
   features/            one folder per route (+ the first-run setup)
     dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command
@@ -120,7 +121,7 @@ page error.
 
 ## Recipes
 
-**Add a field to nodes** (e.g. an hourly rate)
+**Add a field to nodes** (as done for `color`, `rate` and `billable`)
 
 1. Add it to `Node` in `core/models.ts` (optional, so old data stays valid).
 2. If it needs an index or a data fix, add a Dexie version; otherwise nothing.

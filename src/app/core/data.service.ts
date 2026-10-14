@@ -16,7 +16,8 @@ export interface NewNode {
 }
 
 export type NodePatch = Partial<Omit<Node, 'id' | 'createdAt' | 'updatedAt' | 'parentId' | 'order'>>;
-export type EntryPatch = Partial<Pick<TimeEntry, 'nodeId' | 'start' | 'end' | 'note' | 'tags'>>;
+export type EntryPatch = Partial<Pick<TimeEntry, 'nodeId' | 'start' | 'end' | 'note' | 'tags' | 'billable'>>;
+export type NewEntry = Pick<TimeEntry, 'nodeId' | 'start'> & { end: number } & Pick<TimeEntry, 'note' | 'tags' | 'billable'>;
 
 /**
  * Single source of truth for the UI. Mirrors IndexedDB into signals via
@@ -215,7 +216,7 @@ export class DataService {
   // --- Entries ---------------------------------------------------------------
 
   /** Adds a closed entry. Rejects empty or inverted ranges. */
-  async addEntry(input: { nodeId: string; start: number; end: number; note?: string; tags?: string[] }): Promise<string> {
+  async addEntry(input: NewEntry): Promise<string> {
     assertRange(input.start, input.end);
     const now = Date.now();
     const e: TimeEntry = { id: uid(), ...input, createdAt: now, updatedAt: now };

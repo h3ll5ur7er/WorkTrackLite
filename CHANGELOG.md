@@ -19,6 +19,11 @@
   optionally scoped to one customer/project; grouped by node (tree with
   subtotals), by day (DST-safe, midnight-crossing entries split) or by tag.
   Summary CSV and entries CSV (clipped to the range).
+- Billing: hourly rate and billable flag per node (inherited by children),
+  billable override per entry, currency and per-entry rounding in Settings.
+  Manage shows the money value of tracked time and of the budget; Reports show
+  billable time and amounts; CSV exports gain `billable,rate,amount` columns
+  (appended at the end, so existing column positions are unchanged).
 
 ### Fixed
 

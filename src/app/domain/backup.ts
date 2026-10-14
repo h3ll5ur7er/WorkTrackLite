@@ -1,4 +1,5 @@
 import { Budget, BudgetType, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from '../core/models';
+import { isCurrencyCode } from './billing';
 import { isHexColor } from './color';
 import { closeAllButNewest } from './entries';
 
@@ -132,6 +133,8 @@ function toNode(v: unknown, i: number): Node {
     order: typeof o['order'] === 'number' ? o['order'] : 0,
     budget,
     color: isHexColor(o['color']) ? o['color'].toLowerCase() : undefined,
+    rate: typeof o['rate'] === 'number' && Number.isFinite(o['rate']) && o['rate'] >= 0 ? o['rate'] : undefined,
+    billable: typeof o['billable'] === 'boolean' ? o['billable'] : undefined,
     archived: o['archived'] === true ? true : undefined,
     showInDashboard: typeof o['showInDashboard'] === 'boolean' ? o['showInDashboard'] : undefined,
     createdAt: typeof o['createdAt'] === 'number' ? o['createdAt'] : 0,
@@ -148,6 +151,7 @@ function toEntry(v: unknown, i: number): TimeEntry {
     end: o['end'] == null ? null : num(o['end'], `entries[${i}].end`),
     note: optStr(o['note']),
     tags: optTags(o['tags']),
+    billable: typeof o['billable'] === 'boolean' ? o['billable'] : undefined,
     createdAt: typeof o['createdAt'] === 'number' ? o['createdAt'] : 0,
     updatedAt: typeof o['updatedAt'] === 'number' ? o['updatedAt'] : 0,
   };
@@ -175,6 +179,11 @@ function toSettings(v: unknown): Settings {
   if (isObject(o['tagColors'])) {
     const colors = Object.entries(o['tagColors']).filter((kv): kv is [string, string] => isHexColor(kv[1]));
     if (colors.length) s.tagColors = Object.fromEntries(colors.map(([k, v]) => [k, v.toLowerCase()]));
+  }
+  if (isCurrencyCode(o['currency'])) s.currency = o['currency'];
+  const r = o['rounding'];
+  if (isObject(r) && typeof r['minutes'] === 'number' && r['minutes'] >= 0 && ['up', 'nearest', 'down'].includes(r['mode'] as string)) {
+    s.rounding = { minutes: r['minutes'], mode: r['mode'] as 'up' | 'nearest' | 'down' };
   }
   if (typeof o['idleGuard'] === 'boolean') s.idleGuard = o['idleGuard'];
   if (typeof o['idleAwayMinutes'] === 'number' && o['idleAwayMinutes'] > 0) s.idleAwayMinutes = o['idleAwayMinutes'];

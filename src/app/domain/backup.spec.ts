@@ -91,6 +91,26 @@ describe('backup', () => {
     expect(res.data.settings.tagColors).toEqual({ urgent: '#22c55e' });
   });
 
+  it('keeps billing fields and drops invalid ones', () => {
+    const b = valid();
+    b.nodes[0].rate = 120;
+    b.nodes[0].billable = false;
+    b.nodes[1].rate = -5;
+    b.entries[0].billable = true;
+    b.settings.currency = 'CHF';
+    b.settings.rounding = { minutes: 15, mode: 'up' };
+    const res = parse({ ...b, settings: { ...b.settings } });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.nodes[0]).toMatchObject({ rate: 120, billable: false });
+    expect(res.data.nodes[1].rate).toBeUndefined();
+    expect(res.data.entries[0].billable).toBe(true);
+    expect(res.data.settings).toMatchObject({ currency: 'CHF', rounding: { minutes: 15, mode: 'up' } });
+    const bad = parse({ ...b, settings: { ...b.settings, currency: 'swiss francs', rounding: { minutes: 15, mode: 'sideways' } } });
+    expect(bad.ok && bad.data.settings.currency).toBeUndefined();
+    expect(bad.ok && bad.data.settings.rounding).toBeUndefined();
+  });
+
   it('names files by local date', () => {
     expect(backupFileName(new Date(2026, 9, 3, 23, 59).getTime())).toBe('worktracklite-backup-2026-10-03.json');
   });

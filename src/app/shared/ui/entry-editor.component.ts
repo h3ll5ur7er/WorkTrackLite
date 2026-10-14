@@ -9,7 +9,7 @@ import {
   linkedSignal,
   output,
 } from '@angular/core';
-import { DataService } from '../../core/data.service';
+import { DataService, NewEntry } from '../../core/data.service';
 import { formatHM, parseTags } from '../../domain/format';
 import { MS_PER_HOUR, fromLocalInput, toLocalInput } from '../../domain/time';
 
@@ -21,6 +21,20 @@ export interface EntryDraft {
   end: number;
   note?: string;
   tags?: string[];
+  /** undefined = follow the node. */
+  billable?: boolean;
+}
+
+/** The fields to store for a draft (empty note/tags dropped). */
+export function draftFields(d: EntryDraft): NewEntry {
+  return {
+    nodeId: d.nodeId!,
+    start: d.start,
+    end: d.end,
+    note: d.note || undefined,
+    tags: d.tags?.length ? d.tags : undefined,
+    billable: d.billable,
+  };
 }
 
 /** Modal dialog to create or edit a closed time entry. */
@@ -98,6 +112,17 @@ export interface EntryDraft {
               [value]="(form().tags ?? []).join(', ')"
               (change)="patch({ tags: parseTags($any($event.target).value) })"
             />
+          </label>
+
+          <label class="field">
+            <span>Billable</span>
+            <select name="billable" (change)="setBillable($any($event.target).value)">
+              <option value="" [selected]="form().billable === undefined">
+                Like the node ({{ nodeBillable() ? 'billable' : 'not billable' }})
+              </option>
+              <option value="yes" [selected]="form().billable === true">Billable</option>
+              <option value="no" [selected]="form().billable === false">Not billable</option>
+            </select>
           </label>
 
           @if (validationError(); as err) {
@@ -243,6 +268,15 @@ export class EntryEditorComponent implements AfterViewInit {
     const t = fromLocalInput(value);
     if (t == null) return;
     this.form.update((f) => ({ ...f, start: t, end: t + (f.end - f.start) }));
+  }
+
+  protected readonly nodeBillable = computed(() => {
+    const id = this.form().nodeId;
+    return id ? this.data.tree().billableOf(id) : true;
+  });
+
+  protected setBillable(value: string): void {
+    this.patch({ billable: value === 'yes' ? true : value === 'no' ? false : undefined });
   }
 
   protected setEnd(value: string): void {

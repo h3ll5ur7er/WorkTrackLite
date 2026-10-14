@@ -11,7 +11,7 @@ import { MS_PER_HOUR } from '../../domain/time';
 import { liveSubtreeSeconds } from '../../domain/tree';
 import { LongPressDirective, LongPressEvent } from '../../shared/long-press.directive';
 import { ContextMenuComponent, MenuItem } from '../../shared/ui/context-menu.component';
-import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
+import { EntryDraft, EntryEditorComponent, draftFields } from '../../shared/ui/entry-editor.component';
 import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 import { BurndownChartComponent } from './burndown-chart.component';
 
@@ -160,13 +160,7 @@ export class DashboardComponent {
 
   protected async saveEntry(draft: EntryDraft): Promise<void> {
     try {
-      await this.data.addEntry({
-        nodeId: draft.nodeId!,
-        start: draft.start,
-        end: draft.end,
-        note: draft.note || undefined,
-        tags: draft.tags,
-      });
+      await this.data.addEntry(draftFields(draft));
       this.editor.set(null);
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : String(e));

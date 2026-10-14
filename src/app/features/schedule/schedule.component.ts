@@ -33,7 +33,7 @@ import {
 } from '../../domain/time';
 import { LongPressDirective, LongPressEvent, swallowNextClick } from '../../shared/long-press.directive';
 import { ContextMenuComponent, MenuItem } from '../../shared/ui/context-menu.component';
-import { EntryDraft, EntryEditorComponent } from '../../shared/ui/entry-editor.component';
+import { EntryDraft, EntryEditorComponent, draftFields } from '../../shared/ui/entry-editor.component';
 
 const SNAP_MIN = 15;
 const FINE_SNAP_MIN = 1;
@@ -381,7 +381,7 @@ export class ScheduleComponent {
   private async paste(src: TimeEntry, start: number, isDuplicate = false): Promise<void> {
     const dur = (src.end ?? src.start + MS_PER_HOUR) - src.start;
     try {
-      await this.data.addEntry({ nodeId: src.nodeId, start, end: start + dur, note: src.note, tags: src.tags });
+      await this.data.addEntry({ nodeId: src.nodeId, start, end: start + dur, note: src.note, tags: src.tags, billable: src.billable });
       if (isDuplicate) this.toast.show('Entry duplicated after the original.');
     } catch (e) {
       this.toast.error(e instanceof Error ? e.message : String(e));
@@ -405,6 +405,7 @@ export class ScheduleComponent {
         end: entry.end ?? Date.now(),
         note: entry.note,
         tags: entry.tags,
+        billable: entry.billable,
       });
     } else {
       const s = start ?? snapToGrid(Date.now(), SNAP_MIN);
@@ -414,13 +415,7 @@ export class ScheduleComponent {
 
   protected async onEditorSave(d: EntryDraft): Promise<void> {
     try {
-      const fields = {
-        nodeId: d.nodeId!,
-        start: d.start,
-        end: d.end,
-        note: d.note || undefined,
-        tags: d.tags?.length ? d.tags : undefined,
-      };
+      const fields = draftFields(d);
       if (d.id) await this.data.updateEntry(d.id, fields);
       else await this.data.addEntry(fields);
       this.editor.set(null);
