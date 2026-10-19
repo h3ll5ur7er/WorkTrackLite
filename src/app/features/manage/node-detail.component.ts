@@ -203,6 +203,11 @@ export class NodeDetailComponent {
     return this.patch({ showInDashboard: value === this.isLeaf() ? undefined : value });
   }
 
+  protected async toggleFavorite(): Promise<void> {
+    const n = this.node();
+    if (n) await this.data.updateNode(n.id, { favorite: n.favorite ? undefined : true });
+  }
+
   protected async setArchived(archived: boolean): Promise<void> {
     const n = this.node();
     if (!n) return;

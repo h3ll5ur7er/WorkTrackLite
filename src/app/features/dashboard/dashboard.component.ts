@@ -8,6 +8,7 @@ import { ToastService } from '../../core/toast.service';
 import { reportForBudget } from '../../domain/budget';
 import { formatHM } from '../../domain/format';
 import { MS_PER_HOUR } from '../../domain/time';
+import { quickStart } from '../../domain/quick-start';
 import { liveSubtreeSeconds } from '../../domain/tree';
 import { LongPressDirective, LongPressEvent } from '../../shared/long-press.directive';
 import { ContextMenuComponent, MenuItem } from '../../shared/ui/context-menu.component';
@@ -97,6 +98,7 @@ export class DashboardComponent {
       .sort(
         (a, b) =>
           Number(b.isRunning) - Number(a.isRunning) ||
+          Number(!!b.node.favorite) - Number(!!a.node.favorite) ||
           Number(b.overBudget) - Number(a.overBudget) ||
           a.node.name.localeCompare(b.node.name),
       );
@@ -104,12 +106,35 @@ export class DashboardComponent {
 
   protected readonly totalCards = computed(() => this.bases().length);
 
-  protected async toggle(card: DashboardCard): Promise<void> {
+  /** Favourites, then recently used nodes: one tap to start or stop. */
+  protected readonly quick = computed(() => {
+    const tree = this.data.tree();
+    const running = this.timer.running();
+    return quickStart(tree, this.data.entries()).map((q) => ({
+      ...q,
+      path: tree.pathNames(q.node.id).slice(0, -1).join(' › '),
+      color: tree.colorOf(q.node.id),
+      isRunning: running?.nodeId === q.node.id,
+    }));
+  });
+
+  protected toggle(card: DashboardCard): Promise<void> {
+    return this.toggleNode(card.node);
+  }
+
+  protected async toggleNode(node: Node): Promise<void> {
     const now = Date.now();
-    if (this.lastActivation.nodeId === card.node.id && now - this.lastActivation.at < REPEAT_GUARD_MS) return;
-    this.lastActivation = { nodeId: card.node.id, at: now };
-    const change = await this.timer.toggle(card.node.id);
-    this.announce(change, card.node.name);
+    if (this.lastActivation.nodeId === node.id && now - this.lastActivation.at < REPEAT_GUARD_MS) return;
+    this.lastActivation = { nodeId: node.id, at: now };
+    const change = await this.timer.toggle(node.id);
+    this.announce(change, node.name);
+  }
+
+  protected async setFavorite(node: Node, favorite: boolean): Promise<void> {
+    await this.data.updateNode(node.id, { favorite: favorite || undefined });
+    this.toast.show(favorite ? `${node.name} added to favourites` : `${node.name} removed from favourites`, {
+      action: { label: 'Undo', run: () => this.data.updateNode(node.id, { favorite: node.favorite }) },
+    });
   }
 
   private announce(change: TimerChange, name: string): void {
@@ -140,6 +165,9 @@ export class DashboardComponent {
         run: async () => this.announce(await this.timer.toggle(card.node.id), card.node.name),
       },
       { label: 'Log time…', run: () => this.openEditor(card.node.id) },
+      card.node.favorite
+        ? { label: 'Remove from favourites', run: () => this.setFavorite(card.node, false) }
+        : { label: 'Add to favourites', run: () => this.setFavorite(card.node, true) },
       { label: 'Open in Manage', run: () => this.router.navigate(['/manage', card.node.id]) },
       {
         label: 'Hide from dashboard',

@@ -91,6 +91,17 @@ describe('backup', () => {
     expect(res.data.settings.tagColors).toEqual({ urgent: '#22c55e' });
   });
 
+  it('keeps favourites; anything but true is dropped', () => {
+    const b = valid();
+    b.nodes[0].favorite = true;
+    (b.nodes[1] as unknown as Record<string, unknown>)['favorite'] = 'yes';
+    const res = parse(b);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.nodes[0].favorite).toBe(true);
+    expect(res.data.nodes[1].favorite).toBeUndefined();
+  });
+
   it('keeps billing fields and drops invalid ones', () => {
     const b = valid();
     b.nodes[0].rate = 120;

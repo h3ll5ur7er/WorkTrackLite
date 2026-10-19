@@ -135,6 +135,7 @@ function toNode(v: unknown, i: number): Node {
     color: isHexColor(o['color']) ? o['color'].toLowerCase() : undefined,
     rate: typeof o['rate'] === 'number' && Number.isFinite(o['rate']) && o['rate'] >= 0 ? o['rate'] : undefined,
     billable: typeof o['billable'] === 'boolean' ? o['billable'] : undefined,
+    favorite: o['favorite'] === true ? true : undefined,
     archived: o['archived'] === true ? true : undefined,
     showInDashboard: typeof o['showInDashboard'] === 'boolean' ? o['showInDashboard'] : undefined,
     createdAt: typeof o['createdAt'] === 'number' ? o['createdAt'] : 0,

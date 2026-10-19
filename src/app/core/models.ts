@@ -38,6 +38,8 @@ export interface Node {
   rate?: number;
   /** Whether time here is billable (inherited; default true). */
   billable?: boolean;
+  /** Pinned to the dashboard's quick-start row and listed first. */
+  favorite?: boolean;
   /** Archived nodes are hidden from the dashboard, palette and pickers but keep their history. */
   archived?: boolean;
   /**

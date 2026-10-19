@@ -182,11 +182,18 @@ export class CommandPaletteComponent {
       { id: 'backup', label: 'Export backup (JSON)', hint: 'data', run: () => this.backup.exportToFile() },
       { id: 'theme', label: 'Toggle theme', hint: 'view', run: () => this.theme.toggle() },
     );
-    for (const n of tree.nodes) {
+    // Favourites first, then tree order (stable sort).
+    const nodes = [...tree.nodes].sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite));
+    for (const n of nodes) {
       if (n.archived || tree.hasArchivedAncestor(n.id)) continue;
       const path = tree.pathLabel(n.id);
       if (!running || running.nodeId !== n.id) {
-        acts.push({ id: `start:${n.id}`, label: `Start timer on ${path}`, hint: n.kind, run: () => this.timer.start(n.id) });
+        acts.push({
+          id: `start:${n.id}`,
+          label: `Start timer on ${path}`,
+          hint: n.favorite ? `★ ${n.kind}` : n.kind,
+          run: () => this.timer.start(n.id),
+        });
       }
       acts.push({ id: `open:${n.id}`, label: `Open ${path}`, hint: n.kind, run: () => this.router.navigate(['/manage', n.id]) });
     }

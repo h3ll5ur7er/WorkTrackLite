@@ -38,6 +38,7 @@ src/app/
     billing.ts         rates, billable flags, rounding, amounts, money format
     schedule-view.ts   day/3-day/week view: auto choice, range start, paging
     entry-edit.ts      split, merge plans and neighbours, shifting entries
+    quick-start.ts     dashboard quick-start row: favourites + recent nodes
   features/            one folder per route (+ the first-run setup)
     dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command

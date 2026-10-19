@@ -41,6 +41,82 @@
   font-size: 0.9rem;
 }
 
+.quick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.quick__title {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-fg-3);
+}
+.quick__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.quick__btn {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 260px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--c-border);
+  border-left: 4px solid var(--node-color, var(--c-border));
+  border-radius: 999px;
+  background: var(--c-bg-2);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  &:hover {
+    border-color: var(--c-accent);
+    border-left-color: var(--node-color, var(--c-accent));
+  }
+  &--running {
+    background: var(--c-accent-bg);
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+  }
+}
+.quick__icon {
+  font-size: 0.8rem;
+}
+.quick__name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quick__path {
+  font-size: 0.7rem;
+  color: var(--c-fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* Phones: one swipeable row instead of several lines of chips. */
+@media (max-width: 720px) {
+  .quick__list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .quick__list li {
+    flex: 0 0 auto;
+  }
+  .quick__path {
+    display: none;
+  }
+}
+
 .dash__grid {
   display: grid;
   gap: 12px;
@@ -125,7 +201,9 @@
   right: 6px;
   z-index: 2;
 }
-.card__breadcrumb {
+/* Keep the first line of text clear of the ⋯ button. */
+.card__breadcrumb,
+.card__content > .card__title:first-child {
   padding-right: 28px;
 }
 
@@ -138,6 +216,10 @@
   gap: 8px;
   line-height: 1.2;
   word-break: break-word;
+}
+.card__fav {
+  color: var(--c-warn);
+  font-size: 0.9rem;
 }
 .card__kind {
   font-size: 0.65rem;
@@ -212,5 +294,18 @@
 @media (prefers-reduced-motion: reduce) {
   .card__pulse {
     animation: none;
+  }
+}
+
+/* Phones: denser cards so more fit on a screen. */
+@media (max-width: 720px) {
+  .card {
+    padding: 10px 12px;
+  }
+  .card__content {
+    gap: 6px;
+  }
+  .card__chart {
+    height: 36px;
   }
 }

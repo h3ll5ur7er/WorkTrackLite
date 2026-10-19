@@ -19,6 +19,16 @@
       } @else if (!n.archived) {
         <button type="button" class="btn btn--primary" (click)="startTimer()">▶ Start</button>
       }
+      <button
+        type="button"
+        class="btn"
+        [class.nd__fav--on]="n.favorite"
+        [attr.aria-pressed]="!!n.favorite"
+        (click)="toggleFavorite()"
+        title="Favourites appear in the dashboard's quick-start row"
+      >
+        <span aria-hidden="true">{{ n.favorite ? '★' : '☆' }}</span> Favourite
+      </button>
       <button type="button" class="btn" (click)="exportCsv('node')">CSV (this)</button>
       @if (hasChildren()) {
         <button type="button" class="btn" (click)="exportCsv('subtree')">CSV (subtree)</button>

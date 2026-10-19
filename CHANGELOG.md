@@ -38,6 +38,10 @@
   `.encrypted.json`). Restoring one, in Settings or on the first-run screen, asks
   for the password; a wrong password changes nothing. Works offline in the
   single-file build too.
+- Favourites and quick start: star a node (card menu or Manage) to pin it;
+  the dashboard's quick-start row shows favourites and the five most recently
+  used nodes for one-tap start/stop. Favourites sort first on the dashboard
+  and in the command palette. Included in backups.
 
 ### Fixed
 
