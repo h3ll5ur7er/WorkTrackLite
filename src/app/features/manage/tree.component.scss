@@ -1,3 +1,10 @@
+:host {
+  /* Fill the sidebar so .tree__list (not the sidebar) scrolls. */
+  display: block;
+  flex: 1;
+  min-height: 0;
+}
+
 .tree {
   display: flex;
   flex-direction: column;

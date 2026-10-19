@@ -22,14 +22,7 @@ export interface MenuItem {
       ></button>
       <!-- Arrow-key handling for the menu items; focus lives on the items themselves. -->
       <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
-      <ul
-        class="ctx__menu"
-        role="menu"
-        [attr.aria-label]="label()"
-        [style.left.px]="clampedX()"
-        [style.top.px]="clampedY()"
-        (keydown)="onKey($event)"
-      >
+      <ul class="ctx__menu" role="menu" [attr.aria-label]="label()" [style.left.px]="x()" [style.top.px]="y()" (keydown)="onKey($event)">
         @for (item of items(); track item.label) {
           <li role="none">
             <button type="button" role="menuitem" [class.ctx__danger]="item.danger" [disabled]="item.disabled" (click)="choose(item)">
@@ -62,18 +55,24 @@ export class ContextMenuComponent implements AfterViewInit {
     });
   }
 
-  /** Focus as soon as the view exists; openers render synchronously (see `renderNow`). */
+  /** Place and focus as soon as the view exists; openers render synchronously (see `renderNow`). */
   ngAfterViewInit(): void {
+    this.keepOnScreen();
     this.buttons()
       .find((b) => !b.disabled)
       ?.focus();
   }
 
-  protected clampedX(): number {
-    return Math.max(4, Math.min(this.x(), (globalThis.innerWidth ?? 1000) - 190));
-  }
-  protected clampedY(): number {
-    return Math.max(4, Math.min(this.y(), (globalThis.innerHeight ?? 800) - 40 * this.items().length - 12));
+  /** Shifts the menu (by its real size) so it stays inside the viewport; CSS caps its height. */
+  private keepOnScreen(): void {
+    const menu = (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.ctx__menu');
+    if (!menu) return;
+    const { width, height } = menu.getBoundingClientRect();
+    const margin = 4;
+    const vw = globalThis.innerWidth ?? 1000;
+    const vh = globalThis.innerHeight ?? 800;
+    menu.style.left = `${Math.max(margin, Math.min(this.x(), vw - width - margin))}px`;
+    menu.style.top = `${Math.max(margin, Math.min(this.y(), vh - height - margin))}px`;
   }
 
   protected async choose(item: MenuItem): Promise<void> {

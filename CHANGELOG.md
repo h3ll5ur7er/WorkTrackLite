@@ -41,6 +41,17 @@
 
 ### Fixed
 
+- Lists that overflowed could hide entries: the Manage tree was clipped by
+  its sidebar (desktop and phone) instead of scrolling. Long context menus now
+  scroll and are placed by their real size, the idle dialog scrolls on small
+  screens, and wide tables (reports, node entries) scroll sideways instead of
+  crushing their columns.
+- Toasts no longer cover a dialog's or menu's buttons: while one is open they
+  move to the top of the screen.
+- Phones: the node header no longer squeezes the breadcrumb to one word per
+  line; the Manage tree folds away while a node is open ("All nodes" toggles
+  it); context menus open as a bottom sheet with larger touch targets.
+- Calendar blocks show their full label as a tooltip when it is truncated.
 - Keys pressed right after opening a context menu or the entry editor could be
   lost: both now render and take focus inside the triggering event (as the
   command palette already did since 0.2.0), via `shared/render-now.ts`.

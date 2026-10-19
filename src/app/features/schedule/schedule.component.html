@@ -127,6 +127,7 @@
                 role="button"
                 tabindex="0"
                 [attr.aria-label]="blockLabel(seg)"
+                [title]="blockLabel(seg)"
                 [attr.data-entry-id]="seg.entry.id"
                 [class.block--running]="seg.entry.end === null"
                 [class.block--overlap]="seg.overlap"

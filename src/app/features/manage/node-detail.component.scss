@@ -12,7 +12,8 @@
   margin-bottom: 16px;
 }
 .nd__title {
-  flex: 1;
+  /* Wraps the actions onto their own line before squeezing the title. */
+  flex: 1 1 280px;
   min-width: 0;
 }
 .nd__path {

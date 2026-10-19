@@ -213,42 +213,44 @@
       <button type="button" class="btn" (click)="newEntry()">+ Log time</button>
     </div>
     @if (ownEntries().length) {
-      <table class="entries">
-        <thead>
-          <tr>
-            <th scope="col">Start</th>
-            <th scope="col">End</th>
-            <th scope="col">Duration</th>
-            <th scope="col">Note</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (e of ownEntries(); track e.id) {
+      <div class="table-scroll">
+        <table class="entries">
+          <thead>
             <tr>
-              <td>{{ e.start | date: 'short' }}</td>
-              <td>
-                @if (e.end !== null) {
-                  {{ e.end | date: 'short' }}
-                } @else {
-                  <em>running…</em>
-                }
-              </td>
-              <td class="entries__num">{{ formatHMS(entrySeconds(e)) }}</td>
-              <td>
-                {{ e.note }}
-                <app-tag-chips [tags]="e.tags" />
-              </td>
-              <td class="entries__actions">
-                @if (e.end !== null) {
-                  <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
-                }
-                <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
-              </td>
+              <th scope="col">Start</th>
+              <th scope="col">End</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Note</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @for (e of ownEntries(); track e.id) {
+              <tr>
+                <td>{{ e.start | date: 'short' }}</td>
+                <td>
+                  @if (e.end !== null) {
+                    {{ e.end | date: 'short' }}
+                  } @else {
+                    <em>running…</em>
+                  }
+                </td>
+                <td class="entries__num">{{ formatHMS(entrySeconds(e)) }}</td>
+                <td>
+                  {{ e.note }}
+                  <app-tag-chips [tags]="e.tags" />
+                </td>
+                <td class="entries__actions">
+                  @if (e.end !== null) {
+                    <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
+                  }
+                  <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     } @else {
       <p class="muted">No entries yet — start the timer or log time manually.</p>
     }

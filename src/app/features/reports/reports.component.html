@@ -61,91 +61,97 @@
     @switch (groupBy()) {
       @case ('node') {
         @if (nodeRows().length) {
-          <table class="rep__table">
-            <thead>
-              <tr>
-                <th scope="col">Node</th>
-                <th scope="col" class="num">Own</th>
-                <th scope="col" class="num">Total</th>
-                @if (hasRates()) {
-                  <th scope="col" class="num">Amount</th>
-                }
-                <th scope="col" class="share">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (r of nodeRows(); track r.nodeId + r.name) {
-                <tr [class.rep__row--root]="r.depth === 0">
-                  <td [style.padding-left.px]="8 + r.depth * 18">
-                    <span class="rep__dot" [style.background]="nodeColor(r.nodeId)" aria-hidden="true"></span>{{ r.name }}
-                  </td>
-                  <td class="num">{{ r.ownSeconds ? formatHM(r.ownSeconds) : '' }}</td>
-                  <td class="num">{{ formatHM(r.totalSeconds) }}</td>
+          <div class="table-scroll">
+            <table class="rep__table">
+              <thead>
+                <tr>
+                  <th scope="col">Node</th>
+                  <th scope="col" class="num">Own</th>
+                  <th scope="col" class="num">Total</th>
                   @if (hasRates()) {
-                    <td class="num">{{ amountFor(r.nodeId) ? money(amountFor(r.nodeId)) : '' }}</td>
+                    <th scope="col" class="num">Amount</th>
                   }
-                  <td class="share">
-                    <span class="rep__bar" [style.width.%]="percent(r.totalSeconds)" [style.background]="nodeColor(r.nodeId)"></span>
-                    <span class="rep__pct">{{ percent(r.totalSeconds) }}%</span>
-                  </td>
+                  <th scope="col" class="share">Share</th>
                 </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (r of nodeRows(); track r.nodeId + r.name) {
+                  <tr [class.rep__row--root]="r.depth === 0">
+                    <td [style.padding-left.px]="8 + r.depth * 18">
+                      <span class="rep__dot" [style.background]="nodeColor(r.nodeId)" aria-hidden="true"></span>{{ r.name }}
+                    </td>
+                    <td class="num">{{ r.ownSeconds ? formatHM(r.ownSeconds) : '' }}</td>
+                    <td class="num">{{ formatHM(r.totalSeconds) }}</td>
+                    @if (hasRates()) {
+                      <td class="num">{{ amountFor(r.nodeId) ? money(amountFor(r.nodeId)) : '' }}</td>
+                    }
+                    <td class="share">
+                      <span class="rep__bar" [style.width.%]="percent(r.totalSeconds)" [style.background]="nodeColor(r.nodeId)"></span>
+                      <span class="rep__pct">{{ percent(r.totalSeconds) }}%</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         } @else {
           <p class="muted">No time tracked in this range.</p>
         }
       }
       @case ('day') {
-        <table class="rep__table">
-          <thead>
-            <tr>
-              <th scope="col">Day</th>
-              <th scope="col" class="num">Hours</th>
-              <th scope="col" class="share"><span class="visually-hidden">Chart</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (d of dayRows(); track d.day) {
-              <tr [class.muted]="!d.seconds">
-                <td>{{ dayLabel(d.day) }}</td>
-                <td class="num">{{ d.seconds ? formatHM(d.seconds) : '–' }}</td>
-                <td class="share"><span class="rep__bar" [style.width.%]="(d.seconds / maxDay()) * 100"></span></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      }
-      @case ('tag') {
-        @if (tagRows().length) {
+        <div class="table-scroll">
           <table class="rep__table">
             <thead>
               <tr>
-                <th scope="col">Tag</th>
+                <th scope="col">Day</th>
                 <th scope="col" class="num">Hours</th>
-                <th scope="col" class="share">Share</th>
+                <th scope="col" class="share"><span class="visually-hidden">Chart</span></th>
               </tr>
             </thead>
             <tbody>
-              @for (r of tagRows(); track r.tag) {
-                @let style = tagStyle(r.tag);
-                <tr>
-                  <td>
-                    @if (r.tag) {
-                      <span class="rep__chip" [style.background]="style.bg" [style.color]="style.fg">{{ r.tag }}</span>
-                    } @else {
-                      <span class="muted">(untagged)</span>
-                    }
-                  </td>
-                  <td class="num">{{ formatHM(r.seconds) }}</td>
-                  <td class="share">
-                    <span class="rep__bar" [style.width.%]="percent(r.seconds)" [style.background]="style.bg"></span>
-                    <span class="rep__pct">{{ percent(r.seconds) }}%</span>
-                  </td>
+              @for (d of dayRows(); track d.day) {
+                <tr [class.muted]="!d.seconds">
+                  <td>{{ dayLabel(d.day) }}</td>
+                  <td class="num">{{ d.seconds ? formatHM(d.seconds) : '–' }}</td>
+                  <td class="share"><span class="rep__bar" [style.width.%]="(d.seconds / maxDay()) * 100"></span></td>
                 </tr>
               }
             </tbody>
           </table>
+        </div>
+      }
+      @case ('tag') {
+        @if (tagRows().length) {
+          <div class="table-scroll">
+            <table class="rep__table">
+              <thead>
+                <tr>
+                  <th scope="col">Tag</th>
+                  <th scope="col" class="num">Hours</th>
+                  <th scope="col" class="share">Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of tagRows(); track r.tag) {
+                  @let style = tagStyle(r.tag);
+                  <tr>
+                    <td>
+                      @if (r.tag) {
+                        <span class="rep__chip" [style.background]="style.bg" [style.color]="style.fg">{{ r.tag }}</span>
+                      } @else {
+                        <span class="muted">(untagged)</span>
+                      }
+                    </td>
+                    <td class="num">{{ formatHM(r.seconds) }}</td>
+                    <td class="share">
+                      <span class="rep__bar" [style.width.%]="percent(r.seconds)" [style.background]="style.bg"></span>
+                      <span class="rep__pct">{{ percent(r.seconds) }}%</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
           <p class="muted rep__note">Entries count for every tag they (or their node) carry, so tags can add up to more than the total.</p>
         } @else {
           <p class="muted">No time tracked in this range.</p>

@@ -169,6 +169,7 @@ export function draftFields(d: EntryDraft): NewEntry {
       display: flex;
       flex-direction: column;
       max-height: 90vh;
+      max-height: calc(100dvh - 32px);
     }
     .modal__header {
       display: flex;
