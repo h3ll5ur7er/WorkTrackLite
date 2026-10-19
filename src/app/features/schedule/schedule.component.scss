@@ -127,6 +127,24 @@
   gap: 6px;
 }
 
+.sched__suggested {
+  display: block;
+  margin: 2px auto 0;
+  padding: 0 6px;
+  border: 1px dashed var(--c-fg-3);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-fg-3);
+  font: inherit;
+  font-size: 0.65rem;
+  cursor: pointer;
+  &:hover,
+  &:focus-visible {
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+  }
+}
+
 .sched__lock {
   font-size: 0.7rem;
   margin-right: 2px;
@@ -241,6 +259,45 @@
     background: var(--c-danger);
   }
 }
+/* A recurring entry's suggested occurrence: click to add, skip or stop. Real blocks sit above it. */
+.suggest {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 6px;
+  overflow: hidden;
+  padding: 0 6px;
+  line-height: 1.15;
+  border: 1.5px dashed var(--c-fg-3);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--c-fg-3);
+  font: inherit;
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  &:hover,
+  &:focus-visible {
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    z-index: 3;
+  }
+}
+.suggest__title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.suggest__meta {
+  white-space: nowrap;
+}
+
 .sched__ghost {
   position: absolute;
   left: 2px;

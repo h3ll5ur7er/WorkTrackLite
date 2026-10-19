@@ -14,6 +14,7 @@ import { PasswordPromptComponent } from '../../shared/ui/password-prompt.compone
 import { ColorPickerComponent } from '../../shared/ui/color-picker.component';
 import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 import { LockSettingsComponent } from './lock-settings.component';
+import { RecurringSettingsComponent } from './recurring-settings.component';
 import { WorkTimeSettingsComponent } from './work-time-settings.component';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -21,7 +22,15 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
 
 @Component({
   selector: 'app-settings',
-  imports: [DatePipe, ColorPickerComponent, PasswordPromptComponent, TagChipsComponent, WorkTimeSettingsComponent, LockSettingsComponent],
+  imports: [
+    DatePipe,
+    ColorPickerComponent,
+    PasswordPromptComponent,
+    TagChipsComponent,
+    WorkTimeSettingsComponent,
+    LockSettingsComponent,
+    RecurringSettingsComponent,
+  ],
   template: `
     <div class="settings">
       <h1>Settings</h1>
@@ -183,6 +192,8 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
       </section>
 
       <app-work-time-settings />
+
+      <app-recurring-settings />
 
       <app-lock-settings />
 

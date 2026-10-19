@@ -67,6 +67,13 @@
   it instead). Locked days are hatched in the schedule and their entries open
   read-only. Only past days can be locked, and not under a running timer;
   unlocking is one click.
+- Recurring entries: right-click an entry → "Repeat every Tuesday" / "Repeat
+  every weekday", or add one in Settings → Recurring entries. Occurrences show
+  as dashed suggestions in the schedule (and as "N suggested" in the day
+  header): Add, Skip this time, or Stop repeating; "⋯ → Add all suggestions"
+  confirms the visible days at once. Nothing is created without a click;
+  occurrences already covered by an entry on that node, on full-day absences
+  or in a locked period are not suggested. Rules can be paused.
 
 ### Fixed
 

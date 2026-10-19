@@ -3,9 +3,10 @@ import { Observable, liveQuery } from 'dexie';
 import { BackupData } from '../domain/backup';
 import { planMerge, splitRanges } from '../domain/entry-edit';
 import { LockedError, isLocked, lockEnd, lockProblem } from '../domain/lock';
+import { pruneSkipped } from '../domain/recurring';
 import { TreeIndex, closedSubtreeSeconds, entriesByNode, reorderSiblings } from '../domain/tree';
 import { WORKTRACK_DB, uid } from './db';
-import { Absence, Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry, WorkTime } from './models';
+import { Absence, Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, RecurringRule, Settings, TimeEntry, WorkTime } from './models';
 import { BUILTIN_TEMPLATES } from './templates';
 
 export interface NewNode {
@@ -398,6 +399,42 @@ export class DataService {
       if (color) tagColors[tag] = color;
       else delete tagColors[tag];
       await this.db.settings.put({ ...cur, tagColors, id: 'app' });
+    });
+  }
+
+  /** Adds or replaces a recurring rule. Returns the previous list for undo. */
+  async saveRecurring(rule: RecurringRule): Promise<RecurringRule[]> {
+    return this.settingsTx((cur) => {
+      const list = cur.recurring ?? [];
+      const i = list.findIndex((r) => r.id === rule.id);
+      const recurring = i < 0 ? [...list, rule] : list.map((r) => (r.id === rule.id ? rule : r));
+      return [{ recurring }, list];
+    });
+  }
+
+  async deleteRecurring(id: string): Promise<RecurringRule[]> {
+    return this.settingsTx((cur) => {
+      const list = cur.recurring ?? [];
+      const recurring = list.filter((r) => r.id !== id);
+      return [{ recurring: recurring.length ? recurring : undefined }, list];
+    });
+  }
+
+  /** Remembers that a suggestion was skipped (keys older than 90 days are dropped). */
+  async skipSuggestions(keys: string[], now = Date.now()): Promise<string[]> {
+    return this.settingsTx((cur) => {
+      const before = cur.recurringSkipped ?? [];
+      return [{ recurringSkipped: pruneSkipped([...new Set([...before, ...keys])], now) }, before];
+    });
+  }
+
+  /** Read-modify-write of settings in one transaction; `change` returns the patch and a result. */
+  private settingsTx<R>(change: (cur: Settings) => [Partial<Settings>, R]): Promise<R> {
+    return this.db.transaction('rw', this.db.settings, async () => {
+      const cur = { ...DEFAULT_SETTINGS, ...(await this.db.settings.get('app')) };
+      const [patch, result] = change(cur);
+      await this.db.settings.put({ ...cur, ...patch, id: 'app' });
+      return result;
     });
   }
 

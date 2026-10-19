@@ -115,6 +115,23 @@ describe('backup', () => {
     expect(bad.ok && bad.data.settings.workTime).toBeUndefined();
   });
 
+  it('keeps valid recurring rules and skipped keys', () => {
+    const b = valid() as unknown as { settings: Record<string, unknown> };
+    b.settings['recurring'] = [
+      { id: 'r', nodeId: 'b', weekdays: [5, 1, 1, 9], startMinutes: 540, minutes: 15, from: '2026-10-01', note: 'standup', paused: true },
+      { id: 'bad', nodeId: 'b', weekdays: [], startMinutes: 540, minutes: 15, from: '2026-10-01' },
+      { id: 'bad2', nodeId: 'b', weekdays: [1], startMinutes: 2000, minutes: 15, from: '2026-10-01' },
+    ];
+    b.settings['recurringSkipped'] = ['r@2026-10-02', 42, 'nonsense'];
+    const res = parse(b);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.settings.recurring).toEqual([
+      { id: 'r', nodeId: 'b', weekdays: [1, 5], startMinutes: 540, minutes: 15, from: '2026-10-01', note: 'standup', paused: true },
+    ]);
+    expect(res.data.settings.recurringSkipped).toEqual(['r@2026-10-02']);
+  });
+
   it('keeps favourites; anything but true is dropped', () => {
     const b = valid();
     b.nodes[0].favorite = true;

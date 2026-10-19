@@ -100,6 +100,18 @@
             >
           }
           {{ d.label }}
+          @if (suggested()[$index]?.length) {
+            <button
+              #sugBtn
+              type="button"
+              class="sched__suggested"
+              aria-haspopup="menu"
+              [attr.data-testid]="'day-suggested-' + $index"
+              (click)="openDaySuggestions(sugBtn, $index)"
+            >
+              {{ suggested()[$index].length }} suggested
+            </button>
+          }
           @if (dayWork()[$index]; as w) {
             @if (w.absence) {
               <span class="sched__day-work sched__day-work--off" [attr.data-testid]="'day-work-' + $index">{{
@@ -149,6 +161,24 @@
             @if (dropGhost(); as g) {
               @if (g.dayIdx === dayIdx) {
                 <div class="sched__ghost" [style.top.%]="(g.topMin / 1440) * 100" [style.height.%]="(60 / 1440) * 100"></div>
+              }
+            }
+            @for (g of suggested()[dayIdx]; track g.s.key) {
+              @if (!g.hidden) {
+                <button
+                  type="button"
+                  class="suggest"
+                  aria-haspopup="menu"
+                  [attr.aria-label]="suggestionLabel(g.s)"
+                  [title]="suggestionLabel(g.s)"
+                  [style.top.%]="(g.topMin / 1440) * 100"
+                  [style.height.%]="(g.heightMin / 1440) * 100"
+                  (click)="onSuggestionClick($event, g.s)"
+                  (contextmenu)="onSuggestionClick($event, g.s)"
+                >
+                  <span class="suggest__title">{{ suggestionName(g.s) }}</span>
+                  <span class="suggest__meta">{{ formatRange(g.s.start, g.s.end) }} · suggested</span>
+                </button>
               }
             }
             @for (seg of columns()[dayIdx]; track seg.entry.id) {

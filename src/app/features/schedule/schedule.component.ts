@@ -18,10 +18,12 @@ import { Absence, Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
 import { WorkTimeService } from '../../core/worktime.service';
+import { uid } from '../../core/db';
 import { ABSENCE_KINDS } from '../../domain/worktime';
 import { readableTextColor } from '../../domain/color';
 import { mergeNeighbors, midpoint, planCopy, shiftEntry } from '../../domain/entry-edit';
 import { isLocked, lockEnd } from '../../domain/lock';
+import { Suggestion, WEEKDAY_NAMES, WORKDAYS, ruleFromEntry, suggestions, weekdaysLabel } from '../../domain/recurring';
 import { formatClock, formatHM, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
 import { ScheduleView, ScheduleViewSetting, VIEW_DAYS, alignStart, resolveView, stepStart } from '../../domain/schedule-view';
@@ -80,6 +82,10 @@ type MenuState = { x: number; y: number } & (
   | { dayStart: number; minutes: number }
   /** The header's ⋯ menu (actions for the visible range). */
   | { page: true }
+  /** A recurring entry's suggested occurrence. */
+  | { suggestion: Suggestion }
+  /** All suggestions of one visible day (from the day header). */
+  | { daySuggestions: number }
 );
 interface Range {
   start: number;
@@ -151,6 +157,93 @@ export class ScheduleComponent {
   }
   private lockedHint(): void {
     this.toast.show('This entry is in a locked period. Unlock it in Settings to change it.');
+  }
+
+  // --- Recurring suggestions -----------------------------------------------------------
+
+  /** Pending occurrences of recurring rules in the visible days, per day column. */
+  protected readonly suggested = computed(() => {
+    const s = this.data.settings();
+    const days = this.days().map((d) => d.ms);
+    const tree = this.data.tree();
+    const list = suggestions(s.recurring ?? [], days, {
+      entries: this.data.entries(),
+      skipped: new Set(s.recurringSkipped ?? []),
+      absences: new Map((s.absences ?? []).map((a) => [a.date, a])),
+      lockEnd: this.lockEndMs(),
+      usable: (id) => {
+        const n = tree.get(id);
+        return !!n && !n.archived && !tree.hasArchivedAncestor(id);
+      },
+    });
+    const entries = this.data.entries();
+    const now = this.timer.minute();
+    return days.map((day, i) => {
+      const next = i + 1 < days.length ? days[i + 1] : addDays(day, 1);
+      return list
+        .filter((x) => x.start >= day && x.start < next)
+        .map((x) => {
+          const topMin = wallClockMinutes(x.start);
+          // Under another entry it would be unreachable: then only the day header lists it.
+          const hidden = entries.some((e) => e.start < x.end && (e.end ?? now) > x.start);
+          return { s: x, topMin, hidden, heightMin: Math.max(15, Math.min(MINUTES_PER_DAY - topMin, (x.end - x.start) / MS_PER_MINUTE)) };
+        });
+    });
+  });
+  private readonly allSuggested = computed(() =>
+    this.suggested()
+      .flat()
+      .map((g) => g.s),
+  );
+
+  protected suggestionName(x: Suggestion): string {
+    return this.data.tree().get(x.nodeId)?.name ?? '?';
+  }
+  protected suggestionLabel(x: Suggestion): string {
+    return `Suggested: ${this.suggestionName(x)}, ${formatRange(x.start, x.end)}`;
+  }
+
+  protected openDaySuggestions(button: HTMLElement, dayIdx: number): void {
+    const r = button.getBoundingClientRect();
+    this.openMenu({ x: r.left, y: r.bottom + 4, daySuggestions: dayIdx });
+  }
+
+  protected onSuggestionClick(ev: MouseEvent, x: Suggestion): void {
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.openMenu({ x: ev.clientX, y: ev.clientY, suggestion: x });
+  }
+
+  private async acceptSuggestions(list: Suggestion[]): Promise<void> {
+    if (!list.length) return;
+    try {
+      const ids = await this.data.addEntries(list.map(({ nodeId, start, end, note, tags }) => ({ nodeId, start, end, note, tags })));
+      const what = list.length === 1 ? (this.data.tree().get(list[0].nodeId)?.name ?? 'entry') : `${list.length} suggested entries`;
+      this.toast.show(`Added ${what}`, { action: { label: 'Undo', run: () => this.data.deleteEntries(ids) } });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  private async skipSuggestion(x: Suggestion): Promise<void> {
+    const before = await this.data.skipSuggestions([x.key]);
+    this.toast.show('Skipped this time', { action: { label: 'Undo', run: () => this.data.updateSettings({ recurringSkipped: before }) } });
+  }
+
+  private async stopRepeating(ruleId: string): Promise<void> {
+    const before = await this.data.deleteRecurring(ruleId);
+    this.toast.show('Stopped repeating', {
+      action: { label: 'Undo', run: () => this.data.updateSettings({ recurring: before.length ? before : undefined }) },
+    });
+  }
+
+  private async repeat(e: TimeEntry, weekdays: number[]): Promise<void> {
+    const rule = ruleFromEntry(e, weekdays, uid());
+    await this.data.saveRecurring(rule);
+    const at = formatClock(e.start);
+    this.toast.show(`Repeats ${weekdaysLabel(rule.weekdays, this.weekStartsOn())} at ${at}; it shows as suggestions to confirm`, {
+      action: { label: 'Undo', run: () => this.data.deleteRecurring(rule.id) },
+    });
   }
 
   /** Worked / target hours and absences per visible day (empty while working time is off). */
@@ -473,7 +566,7 @@ export class ScheduleComponent {
   }
 
   protected onColLongPress(ev: LongPressEvent, dayStart: number, col: HTMLElement): void {
-    if ((ev.target as HTMLElement | null)?.closest?.('.block')) return;
+    if ((ev.target as HTMLElement | null)?.closest?.('.block, .suggest')) return;
     this.openMenu({ x: ev.x, y: ev.y, dayStart, minutes: this.minutesAt(ev.y, col) });
   }
 
@@ -500,6 +593,9 @@ export class ScheduleComponent {
       else if (half != null) items.push({ label: 'Split in half', run: () => this.split(e, half) });
       if (prev && !this.isEntryLocked(prev)) items.push({ label: 'Merge with previous', run: () => this.merge([prev.id, e.id]) });
       if (next) items.push({ label: 'Merge with next', run: () => this.merge([e.id, next.id]) });
+      const weekday = new Date(e.start).getDay();
+      items.push({ label: `Repeat every ${WEEKDAY_NAMES[weekday]}`, run: () => this.repeat(e, [weekday]) });
+      if (WORKDAYS.includes(weekday)) items.push({ label: 'Repeat every weekday (Mon–Fri)', run: () => this.repeat(e, WORKDAYS) });
       items.push(
         { label: this.isSelected(e.id) ? 'Deselect' : 'Select', run: () => this.toggleSelected(e) },
         { label: 'Delete', danger: true, run: () => this.deleteEntry(e.id) },
@@ -509,7 +605,39 @@ export class ScheduleComponent {
     if ('page' in m) {
       const days = VIEW_DAYS[this.view()];
       const from = this.rangeStart();
-      return [{ label: 'Copy from last week', run: () => this.copyRange(addDays(from, -7), addDays(from, days - 7), 7, 'from last week') }];
+      const pending = this.allSuggested();
+      return [
+        { label: 'Copy from last week', run: () => this.copyRange(addDays(from, -7), addDays(from, days - 7), 7, 'from last week') },
+        {
+          label: pending.length ? `Add all suggestions (${pending.length})` : 'Add all suggestions',
+          disabled: !pending.length,
+          run: () => this.acceptSuggestions(pending),
+        },
+      ];
+    }
+    if ('daySuggestions' in m) {
+      const list = (this.suggested()[m.daySuggestions] ?? []).map((g) => g.s);
+      const items: MenuItem[] = list.map((x) => ({
+        label: `Add ${this.suggestionName(x)} ${formatRange(x.start, x.end)}`,
+        run: () => this.acceptSuggestions([x]),
+      }));
+      if (list.length > 1) items.push({ label: `Add all (${list.length})`, run: () => this.acceptSuggestions(list) });
+      items.push({
+        label: list.length > 1 ? `Skip all (${list.length})` : 'Skip',
+        run: async () => {
+          const before = await this.data.skipSuggestions(list.map((x) => x.key));
+          this.toast.show('Skipped', { action: { label: 'Undo', run: () => this.data.updateSettings({ recurringSkipped: before }) } });
+        },
+      });
+      return items;
+    }
+    if ('suggestion' in m) {
+      const x = m.suggestion;
+      return [
+        { label: 'Add', run: () => this.acceptSuggestions([x]) },
+        { label: 'Skip this time', run: () => this.skipSuggestion(x) },
+        { label: 'Stop repeating', danger: true, run: () => this.stopRepeating(x.ruleId) },
+      ];
     }
     const at = atWallClockMinutes(m.dayStart, m.minutes);
     const cb = this.clipboard();

@@ -100,6 +100,10 @@ export interface Settings {
   budgetNotifications?: boolean;
   /** Tag name → #rrggbb. */
   tagColors?: Record<string, string>;
+  /** Recurring entries, offered as suggestions in the schedule. */
+  recurring?: RecurringRule[];
+  /** Suggestions the user skipped: `${ruleId}@yyyy-mm-dd`. */
+  recurringSkipped?: string[];
   /** Entries starting on or before this day (yyyy-mm-dd) are read-only (e.g. after invoicing). */
   lockedUntil?: string;
   /** Working hours and overtime balance; undefined = off. */
@@ -129,6 +133,23 @@ export interface WorkTime {
   from: string;
   /** Balance carried over from before `from`, in seconds (may be negative). */
   carrySeconds?: number;
+}
+
+/** "Every Mon–Fri 09:00 for 15 min on Internal / Standup". */
+export interface RecurringRule {
+  id: string;
+  nodeId: string;
+  /** Weekdays like `Date.getDay()` (0 = Sunday). */
+  weekdays: number[];
+  /** Wall-clock start, minutes after midnight. */
+  startMinutes: number;
+  /** Duration in minutes. */
+  minutes: number;
+  note?: string;
+  tags?: string[];
+  /** First day (yyyy-mm-dd) with suggestions. */
+  from: string;
+  paused?: boolean;
 }
 
 export interface Rounding {

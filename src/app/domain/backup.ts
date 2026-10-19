@@ -1,4 +1,15 @@
-import { Absence, AbsenceKind, Budget, BudgetType, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from '../core/models';
+import {
+  Absence,
+  AbsenceKind,
+  Budget,
+  BudgetType,
+  DEFAULT_SETTINGS,
+  HierarchyTemplate,
+  Node,
+  RecurringRule,
+  Settings,
+  TimeEntry,
+} from '../core/models';
 import { isCurrencyCode } from './billing';
 import { isHexColor } from './color';
 import { closeAllButNewest } from './entries';
@@ -193,6 +204,14 @@ function toSettings(v: unknown): Settings {
   if (typeof o['idleGuard'] === 'boolean') s.idleGuard = o['idleGuard'];
   if (typeof o['budgetAlerts'] === 'boolean') s.budgetAlerts = o['budgetAlerts'];
   if (typeof o['lockedUntil'] === 'string' && fromDateKey(o['lockedUntil']) != null) s.lockedUntil = o['lockedUntil'];
+  if (Array.isArray(o['recurring'])) {
+    const rules = o['recurring'].map(toRecurringRule).filter((r): r is RecurringRule => !!r);
+    if (rules.length) s.recurring = rules;
+  }
+  if (Array.isArray(o['recurringSkipped'])) {
+    const keys = o['recurringSkipped'].filter((k): k is string => typeof k === 'string' && /^.+@\d{4}-\d{2}-\d{2}$/.test(k));
+    if (keys.length) s.recurringSkipped = keys;
+  }
   const wt = o['workTime'];
   if (
     isObject(wt) &&
@@ -218,6 +237,23 @@ function toSettings(v: unknown): Settings {
   if (typeof o['idleAwayMinutes'] === 'number' && o['idleAwayMinutes'] > 0) s.idleAwayMinutes = o['idleAwayMinutes'];
   if (typeof o['idleLongRunningHours'] === 'number' && o['idleLongRunningHours'] > 0) s.idleLongRunningHours = o['idleLongRunningHours'];
   return s;
+}
+
+function toRecurringRule(v: unknown): RecurringRule | null {
+  if (!isObject(v)) return null;
+  const { id, nodeId, weekdays, startMinutes, minutes, from } = v;
+  if (typeof id !== 'string' || !id || typeof nodeId !== 'string' || !nodeId) return null;
+  if (!Array.isArray(weekdays) || typeof from !== 'string' || fromDateKey(from) == null) return null;
+  const days = [...new Set(weekdays.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  if (!days.length || typeof startMinutes !== 'number' || startMinutes < 0 || startMinutes >= 24 * 60) return null;
+  if (typeof minutes !== 'number' || minutes <= 0 || minutes > 24 * 60) return null;
+  const rule: RecurringRule = { id, nodeId, weekdays: days, startMinutes, minutes, from };
+  const note = optStr(v['note']);
+  const tags = optTags(v['tags']);
+  if (note) rule.note = note;
+  if (tags) rule.tags = tags;
+  if (v['paused'] === true) rule.paused = true;
+  return rule;
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {
