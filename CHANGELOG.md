@@ -45,6 +45,11 @@
 - Notes and tags on the running timer: the timer bar shows the note and tags
   of the running entry; click it to edit them without stopping the timer
   (Enter saves, Escape cancels).
+- Budget alerts: a toast (with "Open") when a node reaches its warning
+  threshold or goes over its budget or target, also while a timer runs; each
+  crossing is announced once per browser, and limits already crossed when you
+  update are not announced. Optional system notifications (Settings → Budget
+  alerts) for when the app is in the background.
 
 ### Fixed
 

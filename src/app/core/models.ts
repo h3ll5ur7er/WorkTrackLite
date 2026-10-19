@@ -92,6 +92,10 @@ export interface Settings {
   idleAwayMinutes?: number;
   /** Ask once when a timer has run this long (hours, default 8). */
   idleLongRunningHours?: number;
+  /** Toast when a budget's warning threshold or limit is crossed (default on). */
+  budgetAlerts?: boolean;
+  /** Also show a system notification for budget alerts (needs browser permission). */
+  budgetNotifications?: boolean;
   /** Tag name → #rrggbb. */
   tagColors?: Record<string, string>;
   /** ISO 4217 code for amounts (default EUR). */

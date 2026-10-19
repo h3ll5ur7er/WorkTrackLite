@@ -20,6 +20,7 @@ src/app/
     toast.service.ts   notifications with optional "Undo"
     presence.service.ts  running timer in the tab title + app badge
     idle.service.ts    forgotten-timer guard (localStorage heartbeat)
+    budget-alert.service.ts  toasts / notifications when a budget limit is crossed
     shortcut-actions.ts  #/action/:name for app-icon shortcuts
   domain/              pure functions, no Angular or DB: unit-test these
     time.ts            DST-safe calendar math (never add 24h to change days)
@@ -39,6 +40,7 @@ src/app/
     schedule-view.ts   day/3-day/week view: auto choice, range start, paging
     entry-edit.ts      split, merge plans and neighbours, shifting entries
     quick-start.ts     dashboard quick-start row: favourites + recent nodes
+    budget-alerts.ts   budget alert levels and which rises to announce
   features/            one folder per route (+ the first-run setup)
     dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command

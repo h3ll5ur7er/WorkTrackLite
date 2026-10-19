@@ -187,6 +187,8 @@ function toSettings(v: unknown): Settings {
     s.rounding = { minutes: r['minutes'], mode: r['mode'] as 'up' | 'nearest' | 'down' };
   }
   if (typeof o['idleGuard'] === 'boolean') s.idleGuard = o['idleGuard'];
+  if (typeof o['budgetAlerts'] === 'boolean') s.budgetAlerts = o['budgetAlerts'];
+  if (typeof o['budgetNotifications'] === 'boolean') s.budgetNotifications = o['budgetNotifications'];
   if (typeof o['idleAwayMinutes'] === 'number' && o['idleAwayMinutes'] > 0) s.idleAwayMinutes = o['idleAwayMinutes'];
   if (typeof o['idleLongRunningHours'] === 'number' && o['idleLongRunningHours'] > 0) s.idleLongRunningHours = o['idleLongRunningHours'];
   return s;

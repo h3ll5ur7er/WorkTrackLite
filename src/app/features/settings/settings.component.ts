@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, inject
 import { DatePipe } from '@angular/common';
 import { BackupService } from '../../core/backup.service';
 import { DataService } from '../../core/data.service';
+import { BudgetAlertService } from '../../core/budget-alert.service';
 import { IdleService } from '../../core/idle.service';
 import { Rounding, Settings, ThemePreference } from '../../core/models';
 import { StorageService } from '../../core/storage.service';
@@ -196,6 +197,37 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
         }
       </section>
 
+      <section class="panel" aria-labelledby="s-alerts">
+        <h2 id="s-alerts">Budget alerts</h2>
+        <label class="check-row">
+          <input
+            type="checkbox"
+            [checked]="alerts.enabled()"
+            (change)="data.updateSettings({ budgetAlerts: $any($event.target).checked })"
+          />
+          Tell me when a node reaches its warning threshold or goes over its budget or target
+        </label>
+        @if (alerts.enabled()) {
+          <label class="check-row">
+            <input
+              type="checkbox"
+              [checked]="alerts.notify()"
+              [disabled]="notifyState() === 'unsupported'"
+              (change)="setNotify($any($event.target))"
+            />
+            Also as a system notification (shows while the app is in the background)
+          </label>
+          @switch (notifyState()) {
+            @case ('denied') {
+              <p class="muted">Notifications are blocked for this site; allow them in the browser's site settings.</p>
+            }
+            @case ('unsupported') {
+              <p class="muted">This browser does not support notifications.</p>
+            }
+          }
+        }
+      </section>
+
       <section class="panel" aria-labelledby="s-idle">
         <h2 id="s-idle">Forgotten-timer guard</h2>
         <label class="check-row">
@@ -298,6 +330,7 @@ export class SettingsComponent {
   protected readonly data = inject(DataService);
   protected readonly storage = inject(StorageService);
   protected readonly idle = inject(IdleService);
+  protected readonly alerts = inject(BudgetAlertService);
   private readonly backup = inject(BackupService);
   private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -449,6 +482,21 @@ export class SettingsComponent {
   protected setRounding(patch: Partial<Rounding>): Promise<void> {
     const cur = this.data.settings().rounding ?? { minutes: 0, mode: 'up' as const };
     return this.data.updateSettings({ rounding: { ...cur, ...patch } });
+  }
+
+  protected readonly notifyState = signal<NotificationPermission | 'unsupported'>(this.alerts.permission());
+
+  protected async setNotify(box: HTMLInputElement): Promise<void> {
+    if (box.checked) {
+      const state = await this.alerts.requestPermission();
+      this.notifyState.set(state);
+      if (state !== 'granted') {
+        box.checked = false;
+        this.toast.show('Notifications were not allowed; alerts stay in the app.');
+        return;
+      }
+    }
+    await this.data.updateSettings({ budgetNotifications: box.checked });
   }
 
   protected updateIdle(patch: Partial<Pick<Settings, 'idleGuard' | 'idleAwayMinutes' | 'idleLongRunningHours'>>): Promise<void> {
