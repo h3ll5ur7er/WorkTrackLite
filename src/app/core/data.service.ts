@@ -298,6 +298,15 @@ export class DataService {
     });
   }
 
+  /** Adds several closed entries in one transaction (all or nothing). Returns their ids. */
+  async addEntries(inputs: NewEntry[]): Promise<string[]> {
+    for (const e of inputs) assertRange(e.start, e.end);
+    const now = Date.now();
+    const rows: TimeEntry[] = inputs.map((e) => ({ id: uid(), ...e, createdAt: now, updatedAt: now }));
+    await this.db.transaction('rw', this.db.entries, () => this.db.entries.bulkAdd(rows));
+    return rows.map((e) => e.id);
+  }
+
   async deleteEntries(ids: string[]): Promise<TimeEntry[]> {
     return this.db.transaction('rw', this.db.entries, async () => {
       const originals = await this.existingEntries(ids);

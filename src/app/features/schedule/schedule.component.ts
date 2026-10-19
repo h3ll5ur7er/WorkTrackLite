@@ -18,7 +18,7 @@ import { Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
 import { readableTextColor } from '../../domain/color';
-import { mergeNeighbors, midpoint, shiftEntry } from '../../domain/entry-edit';
+import { mergeNeighbors, midpoint, planCopy, shiftEntry } from '../../domain/entry-edit';
 import { formatClock, formatHM, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
 import { ScheduleView, ScheduleViewSetting, VIEW_DAYS, alignStart, resolveView, stepStart } from '../../domain/schedule-view';
@@ -72,7 +72,12 @@ interface DragState {
 }
 
 /** `at`: the time under the pointer when the menu was opened on an entry (split point). */
-type MenuState = { x: number; y: number } & ({ entry: TimeEntry; at?: number | null } | { dayStart: number; minutes: number });
+type MenuState = { x: number; y: number } & (
+  | { entry: TimeEntry; at?: number | null }
+  | { dayStart: number; minutes: number }
+  /** The header's ⋯ menu (actions for the visible range). */
+  | { page: true }
+);
 interface Range {
   start: number;
   end: number;
@@ -464,11 +469,19 @@ export class ScheduleComponent {
       );
       return items;
     }
+    if ('page' in m) {
+      const days = VIEW_DAYS[this.view()];
+      const from = this.rangeStart();
+      return [{ label: 'Copy from last week', run: () => this.copyRange(addDays(from, -7), addDays(from, days - 7), 7, 'from last week') }];
+    }
     const at = atWallClockMinutes(m.dayStart, m.minutes);
     const cb = this.clipboard();
+    const nextDay = addDays(m.dayStart, 1);
     return [
       { label: 'New entry here…', run: () => this.openEditor(null, at) },
       { label: cb ? `Paste ${this.nodeName(cb)}` : 'Paste', disabled: !cb, run: () => cb && this.paste(cb, at) },
+      { label: 'Copy this day to the next day', run: () => this.copyRange(m.dayStart, nextDay, 1, 'to the next day') },
+      { label: 'Copy this day to next week', run: () => this.copyRange(m.dayStart, nextDay, 7, 'to next week') },
     ];
   }
 
@@ -486,6 +499,35 @@ export class ScheduleComponent {
     const removed = await this.data.deleteEntry(id);
     this.editor.set(null);
     if (removed) this.toast.show('Entry deleted', { action: { label: 'Undo', run: () => this.data.restoreEntries([removed]) } });
+  }
+
+  // --- Copy days ------------------------------------------------------------------------
+
+  protected openPageMenu(button: HTMLElement): void {
+    const r = button.getBoundingClientRect();
+    this.openMenu({ x: r.right - 220, y: r.bottom + 4, page: true });
+  }
+
+  /** Copies the finished entries starting in [from, to) by `dayShift` days. */
+  private async copyRange(from: number, to: number, dayShift: number, what: string): Promise<void> {
+    const plan = planCopy(this.data.entries(), from, to, dayShift);
+    if (!plan.copies.length) {
+      this.toast.show(plan.duplicates ? `Nothing to copy ${what}: those entries are already there.` : `Nothing to copy ${what}.`);
+      return;
+    }
+    try {
+      const ids = await this.data.addEntries(plan.copies);
+      const n = ids.length;
+      const extra = [
+        plan.duplicates ? `${plan.duplicates} already there` : '',
+        plan.overlaps ? `${plan.overlaps} ${plan.overlaps === 1 ? 'overlaps' : 'overlap'} existing entries` : '',
+      ].filter(Boolean);
+      this.toast.show(`Copied ${n} ${n === 1 ? 'entry' : 'entries'} ${what}${extra.length ? ` (${extra.join(', ')})` : ''}`, {
+        action: { label: 'Undo', run: () => this.data.deleteEntries(ids) },
+      });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
   }
 
   // --- Split / merge -----------------------------------------------------------------

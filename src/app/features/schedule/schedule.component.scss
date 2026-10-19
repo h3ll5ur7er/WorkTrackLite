@@ -335,7 +335,9 @@
   }
   .sched__actions {
     flex: 1 0 100%;
-    justify-content: space-between;
+  }
+  .sched__view {
+    margin-right: auto;
   }
   .sched__long {
     display: none;

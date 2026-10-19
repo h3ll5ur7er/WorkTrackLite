@@ -179,6 +179,22 @@ describe('DataService', () => {
       await expect(data.updateEntries(['a', 'gone'], () => ({ nodeId: 'm' }))).rejects.toThrow('no longer exist');
     });
 
+    it('adds several entries at once, or none if one is invalid', async () => {
+      const ids = await data.addEntries([
+        { nodeId: 'n', start: T, end: T + H },
+        { nodeId: 'n', start: T + H, end: T + 2 * H, note: 'b' },
+      ]);
+      expect(ids).toHaveLength(2);
+      expect((await db.entries.get(ids[1]))?.note).toBe('b');
+      await expect(
+        data.addEntries([
+          { nodeId: 'n', start: T, end: T + H },
+          { nodeId: 'n', start: T, end: T },
+        ]),
+      ).rejects.toThrow();
+      expect(await db.entries.count()).toBe(2);
+    });
+
     it('deletes several entries', async () => {
       await db.entries.bulkAdd([makeEntry({ id: 'a', nodeId: 'n', start: T }), makeEntry({ id: 'b', nodeId: 'n', start: T + H })]);
       const removed = await data.deleteEntries(['a', 'b']);

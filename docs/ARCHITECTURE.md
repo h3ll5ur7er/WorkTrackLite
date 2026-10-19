@@ -38,7 +38,7 @@ src/app/
     reports.ts         date-range presets, clipping, group by node/day/tag
     billing.ts         rates, billable flags, rounding, amounts, money format
     schedule-view.ts   day/3-day/week view: auto choice, range start, paging
-    entry-edit.ts      split, merge plans and neighbours, shifting entries
+    entry-edit.ts      split, merge plans and neighbours, shifting and copying entries
     quick-start.ts     dashboard quick-start row: favourites + recent nodes
     budget-alerts.ts   budget alert levels and which rises to announce
   features/            one folder per route (+ the first-run setup)

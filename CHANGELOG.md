@@ -50,6 +50,11 @@
   crossing is announced once per browser, and limits already crossed when you
   update are not announced. Optional system notifications (Settings → Budget
   alerts) for when the app is in the background.
+- Copy days in the schedule: "⋯ → Copy from last week" fills the visible
+  days with last week's entries; a day's menu copies it to the next day or to
+  next week. Wall-clock times are kept across DST, exact duplicates are
+  skipped (so repeating it adds nothing), overlaps are reported, and Undo
+  removes the copies.
 
 ### Fixed
 

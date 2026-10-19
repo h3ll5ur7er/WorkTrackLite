@@ -1,5 +1,5 @@
 import { makeEntry } from '../testing/test-db';
-import { MERGE_MAX_GAP_MS, mergeNeighbors, midpoint, planMerge, shiftEntry, splitRanges } from './entry-edit';
+import { MERGE_MAX_GAP_MS, mergeNeighbors, midpoint, planCopy, planMerge, shiftEntry, splitRanges } from './entry-edit';
 import { MS_PER_HOUR, MS_PER_MINUTE } from './time';
 
 const local = (m: number, d: number, h = 0, min = 0) => new Date(2026, m - 1, d, h, min).getTime();
@@ -104,5 +104,37 @@ describe('shiftEntry', () => {
     const e = makeEntry({ id: 'e', nodeId: 'n', start: local(10, 24, 9), end: local(10, 24, 11) });
     expect(shiftEntry(e, 1, 30 * MS_PER_MINUTE)).toEqual({ start: local(10, 25, 9, 30), end: local(10, 25, 11, 30) });
     expect(shiftEntry(e, 0, -MS_PER_HOUR)).toEqual({ start: local(10, 24, 8), end: local(10, 24, 10) });
+  });
+});
+
+describe('planCopy', () => {
+  const sat = (h: number) => local(10, 24, h);
+  const entries = [
+    makeEntry({ id: 'a', nodeId: 'n', start: sat(9), end: sat(10), note: 'x', tags: ['t'], billable: false }),
+    makeEntry({ id: 'b', nodeId: 'm', start: sat(23), end: local(10, 25, 1) }), // crosses midnight
+    makeEntry({ id: 'run', nodeId: 'n', start: sat(14), end: null }),
+    makeEntry({ id: 'other-day', nodeId: 'n', start: local(10, 23, 9), end: local(10, 23, 10) }),
+  ];
+
+  it('copies closed entries starting in the range, keeping wall-clock times across the DST change', () => {
+    // Saturday → Sunday 25 Oct (the 25-hour day in Zurich).
+    const plan = planCopy(entries, local(10, 24), local(10, 25), 1);
+    expect(plan.copies).toEqual([
+      { nodeId: 'n', start: local(10, 25, 9), end: local(10, 25, 10), note: 'x', tags: ['t'], billable: false },
+      { nodeId: 'm', start: local(10, 25, 23), end: local(10, 26, 1) },
+    ]);
+    expect(plan.copies[0].end - plan.copies[0].start).toBe(MS_PER_HOUR);
+    expect(plan).toMatchObject({ duplicates: 0, overlaps: 0 });
+  });
+
+  it('skips exact duplicates and counts overlaps', () => {
+    const existing = [
+      ...entries,
+      makeEntry({ id: 'dup', nodeId: 'n', start: local(10, 25, 9), end: local(10, 25, 10) }),
+      makeEntry({ id: 'clash', nodeId: 'z', start: local(10, 26, 0), end: local(10, 26, 2) }),
+    ];
+    const plan = planCopy(existing, local(10, 24), local(10, 25), 1);
+    expect(plan.copies.map((c) => c.nodeId)).toEqual(['m']);
+    expect(plan).toMatchObject({ duplicates: 1, overlaps: 1 });
   });
 });

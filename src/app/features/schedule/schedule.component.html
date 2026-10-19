@@ -58,6 +58,16 @@
           <option value="3day" [selected]="viewSetting() === '3day'">3 days</option>
           <option value="week" [selected]="viewSetting() === 'week'">Week</option>
         </select>
+        <button
+          #pageMenuBtn
+          type="button"
+          class="btn"
+          aria-haspopup="menu"
+          aria-label="More schedule actions"
+          (click)="openPageMenu(pageMenuBtn)"
+        >
+          ⋯
+        </button>
         <button type="button" class="btn btn--primary" (click)="openEditor(null)">+ New<span class="sched__long"> entry</span></button>
       </div>
     </header>
