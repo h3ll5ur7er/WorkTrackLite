@@ -15,7 +15,7 @@ import {
   reportByTag,
   totalSecondsOf,
 } from '../../domain/reports';
-import { addDays, startOfDay } from '../../domain/time';
+import { addDays, fromDateKey, startOfDay, toDateKey } from '../../domain/time';
 import { downloadFile } from '../../shared/download';
 
 type GroupBy = 'node' | 'day' | 'tag';
@@ -27,16 +27,6 @@ const PRESETS: { id: RangePreset; label: string }[] = [
   { id: 'last-month', label: 'Last month' },
   { id: 'last-30-days', label: 'Last 30 days' },
 ];
-
-/** yyyy-mm-dd for <input type="date"> (local). */
-function toDateInput(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function fromDateInput(v: string): number | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-  return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : null;
-}
 
 @Component({
   selector: 'app-reports',
@@ -60,9 +50,9 @@ export class ReportsComponent {
     const p = this.preset();
     return p === 'custom' ? this.custom() : presetRange(p, this.timer.minute(), this.data.settings().weekStartsOn ?? 1);
   });
-  protected readonly fromInput = computed(() => toDateInput(this.range().from));
+  protected readonly fromInput = computed(() => toDateKey(this.range().from));
   /** The inclusive last day, as people read date ranges. */
-  protected readonly toInput = computed(() => toDateInput(addDays(this.range().to, -1)));
+  protected readonly toInput = computed(() => toDateKey(addDays(this.range().to, -1)));
 
   protected readonly scopeOptions = computed(() => {
     const tree = this.data.tree();
@@ -134,7 +124,7 @@ export class ReportsComponent {
   }
 
   protected setFrom(v: string): void {
-    const from = fromDateInput(v);
+    const from = fromDateKey(v);
     if (from == null) return;
     const r = this.range();
     this.custom.set({ from, to: Math.max(r.to, addDays(from, 1)) });
@@ -142,7 +132,7 @@ export class ReportsComponent {
   }
 
   protected setTo(v: string): void {
-    const last = fromDateInput(v);
+    const last = fromDateKey(v);
     if (last == null) return;
     const to = addDays(startOfDay(last), 1);
     this.custom.set({ from: Math.min(this.range().from, addDays(to, -1)), to });
@@ -171,7 +161,7 @@ export class ReportsComponent {
     } else if (this.groupBy() === 'day') {
       csv = tableToCsv(
         ['date', 'hours'],
-        this.dayRows().map((r) => [toDateInput(r.day), hours(r.seconds)]),
+        this.dayRows().map((r) => [toDateKey(r.day), hours(r.seconds)]),
       );
     } else {
       csv = tableToCsv(

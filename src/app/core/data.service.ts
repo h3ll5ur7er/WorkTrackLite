@@ -4,7 +4,7 @@ import { BackupData } from '../domain/backup';
 import { planMerge, splitRanges } from '../domain/entry-edit';
 import { TreeIndex, closedSubtreeSeconds, entriesByNode, reorderSiblings } from '../domain/tree';
 import { WORKTRACK_DB, uid } from './db';
-import { Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from './models';
+import { Absence, Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry, WorkTime } from './models';
 import { BUILTIN_TEMPLATES } from './templates';
 
 export interface NewNode {
@@ -73,14 +73,18 @@ export class DataService {
         if (!(await this.db.settings.get('app'))) await this.db.settings.put(DEFAULT_SETTINGS);
       });
       await Promise.all([
+        // Nodes and entries in one read transaction, set together: derived views (budgets,
+        // alerts, reports) never see a write half applied, e.g. a restore's nodes without its entries.
         this.mirror(
-          () => this.db.nodes.toArray(),
-          (v) => this.nodes.set(v),
-          destroyRef,
-        ),
-        this.mirror(
-          () => this.db.entries.toArray(),
-          (v) => this.entries.set(v),
+          () =>
+            this.db.transaction('r', this.db.nodes, this.db.entries, async () => ({
+              nodes: await this.db.nodes.toArray(),
+              entries: await this.db.entries.toArray(),
+            })),
+          (v) => {
+            this.nodes.set(v.nodes);
+            this.entries.set(v.entries);
+          },
           destroyRef,
         ),
         this.mirror(
@@ -339,6 +343,32 @@ export class DataService {
       if (color) tagColors[tag] = color;
       else delete tagColors[tag];
       await this.db.settings.put({ ...cur, tagColors, id: 'app' });
+    });
+  }
+
+  /** Merges into the working-time settings (`null` turns them off). Returns the previous value for undo. */
+  async updateWorkTime(patch: Partial<WorkTime> | null, base: WorkTime): Promise<WorkTime | undefined> {
+    return this.db.transaction('rw', this.db.settings, async () => {
+      const cur = { ...DEFAULT_SETTINGS, ...(await this.db.settings.get('app')) };
+      const before = cur.workTime;
+      const workTime = patch === null ? undefined : { ...(before ?? base), ...patch };
+      await this.db.settings.put({ ...cur, workTime, id: 'app' });
+      return before;
+    });
+  }
+
+  /**
+   * Adds absences (replacing any on the same days) and removes the given days,
+   * atomically. Returns the previous list for undo.
+   */
+  async changeAbsences(add: Absence[], removeDates: string[] = []): Promise<Absence[]> {
+    return this.db.transaction('rw', this.db.settings, async () => {
+      const cur = { ...DEFAULT_SETTINGS, ...(await this.db.settings.get('app')) };
+      const before = cur.absences ?? [];
+      const drop = new Set([...removeDates, ...add.map((a) => a.date)]);
+      const absences = [...before.filter((a) => !drop.has(a.date)), ...add].sort((x, y) => x.date.localeCompare(y.date));
+      await this.db.settings.put({ ...cur, absences: absences.length ? absences : undefined, id: 'app' });
+      return before;
     });
   }
 

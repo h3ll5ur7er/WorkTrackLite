@@ -14,9 +14,11 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { renderNow } from '../../shared/render-now';
 import { DataService } from '../../core/data.service';
-import { Node, TimeEntry } from '../../core/models';
+import { Absence, Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
+import { WorkTimeService } from '../../core/worktime.service';
+import { ABSENCE_KINDS } from '../../domain/worktime';
 import { readableTextColor } from '../../domain/color';
 import { mergeNeighbors, midpoint, planCopy, shiftEntry } from '../../domain/entry-edit';
 import { formatClock, formatHM, formatRange } from '../../domain/format';
@@ -96,6 +98,7 @@ export class ScheduleComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly timer = inject(TimerService);
   private readonly toast = inject(ToastService);
+  private readonly workTime = inject(WorkTimeService);
 
   protected readonly hours = Array.from({ length: 24 }, (_, i) => i);
   protected readonly dayHeightPx = 24 * HOUR_HEIGHT_PX;
@@ -136,6 +139,14 @@ export class ScheduleComponent {
       isToday: isSameDay(ms, today),
     }));
   });
+
+  /** Worked / target hours and absences per visible day (empty while working time is off). */
+  protected readonly dayWork = computed(() => (this.workTime.work() ? this.workTime.daysInfo(this.days().map((d) => d.ms)) : []));
+
+  protected absenceLabel(a: Absence): string {
+    const kind = ABSENCE_KINDS.find((k) => k.id === a.kind)?.label ?? a.kind;
+    return a.half ? `${kind} (½)` : kind;
+  }
 
   // --- Drag state ------------------------------------------------------------
   private drag: DragState | null = null;

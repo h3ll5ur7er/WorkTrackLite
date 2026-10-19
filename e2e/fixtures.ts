@@ -36,6 +36,7 @@ export interface SeedNode {
   rate?: number;
   billable?: boolean;
   favorite?: boolean;
+  work?: boolean;
 }
 export interface SeedEntry {
   id: string;

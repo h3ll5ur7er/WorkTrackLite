@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTestDb, waitFor } from '../testing/test-db';
+import { BackupService } from './backup.service';
 import { BudgetAlertService } from './budget-alert.service';
 import { WorkTrackDB } from './db';
 import { DataService } from './data.service';
@@ -96,6 +97,19 @@ describe('BudgetAlertService', () => {
     expect(JSON.parse(localStorage.getItem('worktracklite.budgetAlerts')!)).toEqual({ n: 'over' });
     db2.close();
     await db2.delete();
+  });
+
+  it('regression: restoring a backup does not announce overruns it already contains', async () => {
+    const backup = TestBed.inject(BackupService);
+    const snap = await data.snapshot();
+    const over = { ...snap.nodes[0], id: 'restored', name: 'Restored' };
+    await backup.restore({
+      ...snap,
+      nodes: [over],
+      entries: [{ id: 'e', nodeId: 'restored', start: T, end: T + 11 * H, createdAt: 0, updatedAt: 0 }],
+    });
+    await settle(() => data.nodes()[0]?.id === 'restored' && data.entries().length === 1);
+    expect(messages()).toEqual([]);
   });
 
   it('can be switched off', async () => {

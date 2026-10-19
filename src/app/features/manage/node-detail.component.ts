@@ -166,6 +166,15 @@ export class NodeDetailComponent {
   protected setRate(v: number): Promise<void> {
     return this.patch({ rate: Number.isFinite(v) && v >= 0 ? v : undefined });
   }
+  protected readonly workTimeOn = computed(() => !!this.data.settings().workTime);
+  protected readonly inheritedWork = computed(() => {
+    const n = this.node();
+    return n?.parentId ? this.tree().countsAsWork(n.parentId) : true;
+  });
+  protected setWork(v: string): Promise<void> {
+    return this.patch({ work: v === 'yes' ? true : v === 'no' ? false : undefined });
+  }
+
   protected setBillable(v: string): Promise<void> {
     return this.patch({ billable: v === 'yes' ? true : v === 'no' ? false : undefined });
   }

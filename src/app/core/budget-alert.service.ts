@@ -1,9 +1,10 @@
 import { DOCUMENT, Injectable, computed, effect, inject, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { reportForBudget } from '../domain/budget';
-import { AlertLevel, alertLevel, alertStep } from '../domain/budget-alerts';
+import { AlertLevel, alertStep, budgetLevels } from '../domain/budget-alerts';
 import { formatHM } from '../domain/format';
-import { liveSubtreeSeconds } from '../domain/tree';
+import { BackupData } from '../domain/backup';
+import { TreeIndex, closedSubtreeSeconds, liveSubtreeSeconds } from '../domain/tree';
 import { DataService } from './data.service';
 import { TimerService } from './timer.service';
 import { ToastService } from './toast.service';
@@ -28,18 +29,9 @@ export class BudgetAlertService {
   readonly notify = computed(() => this.data.settings().budgetNotifications ?? false);
 
   /** Current level of every live node that has a budget. */
-  private readonly levels = computed(() => {
-    const tree = this.data.tree();
-    const closed = this.data.closedSubtreeSeconds();
-    const running = this.timer.running();
-    const now = this.timer.minute();
-    const out = new Map<string, AlertLevel>();
-    for (const n of tree.nodes) {
-      if (n.budget.type === 'none' || n.archived || tree.hasArchivedAncestor(n.id)) continue;
-      out.set(n.id, alertLevel(reportForBudget(n.budget, liveSubtreeSeconds(tree, closed, n.id, running, now))));
-    }
-    return out;
-  });
+  private readonly levels = computed(() =>
+    budgetLevels(this.data.tree(), this.data.closedSubtreeSeconds(), this.timer.running(), this.timer.minute()),
+  );
 
   constructor() {
     effect(() => {
@@ -76,6 +68,16 @@ export class BudgetAlertService {
       if (this.notify()) void this.systemNotification(message, nodeId);
     }
     if (step.raised.length > 3) this.toast.show(`…and ${step.raised.length - 3} more budgets crossed a limit.`);
+  }
+
+  /**
+   * Call before replacing all data with a backup: records the restored data's
+   * levels as already announced, so a restore does not replay old overruns.
+   */
+  rebaseline(backup: BackupData, now = Date.now()): void {
+    const tree = new TreeIndex(backup.nodes);
+    const running = backup.entries.filter((e) => e.end == null).sort((a, b) => b.start - a.start)[0] ?? null;
+    this.write(alertStep({}, budgetLevels(tree, closedSubtreeSeconds(tree, backup.entries), running, now)).remembered);
   }
 
   /** Asks the browser for permission; returns the resulting state. */

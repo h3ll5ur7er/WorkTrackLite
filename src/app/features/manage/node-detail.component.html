@@ -158,6 +158,16 @@
         <span>Kind</span>
         <input [value]="n.kind" (change)="setKind($any($event.target).value)" />
       </label>
+      @if (workTimeOn()) {
+        <label class="field">
+          <span>Working time</span>
+          <select (change)="setWork($any($event.target).value)">
+            <option value="" [selected]="n.work === undefined">Inherit ({{ inheritedWork() ? 'counts' : 'does not count' }})</option>
+            <option value="yes" [selected]="n.work === true">Counts as working time</option>
+            <option value="no" [selected]="n.work === false">Does not count (e.g. personal)</option>
+          </select>
+        </label>
+      }
       <label class="field">
         <span>Tags (comma separated)</span>
         <input [value]="(n.tags ?? []).join(', ')" (change)="setTags($any($event.target).value)" />

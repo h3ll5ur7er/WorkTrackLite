@@ -37,4 +37,9 @@ describe('alertStep', () => {
     const again = alertStep(dropped.remembered, new Map([['a', 'over']] as const));
     expect(again.raised).toEqual([{ nodeId: 'a', level: 'over' }]);
   });
+
+  it('regression: nodes missing from the current levels keep what was announced', () => {
+    // E.g. a restore: settings arrive before the restored nodes, so the old node set is current.
+    expect(alertStep({ restored: 'over', old: 'soft' }, new Map([['old', 'ok']] as const)).remembered).toEqual({ restored: 'over' });
+  });
 });

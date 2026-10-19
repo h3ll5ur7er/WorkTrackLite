@@ -109,6 +109,18 @@ describe('DataService', () => {
     expect((await db.settings.get('app'))?.tagColors).toEqual({ a: '#ef4444', c: '#3b82f6' });
   });
 
+  it('absences: adding replaces the same day, removing and undo restore the list', async () => {
+    await data.changeAbsences([
+      { date: '2026-10-20', kind: 'vacation' },
+      { date: '2026-10-19', kind: 'vacation' },
+    ]);
+    const before = await data.changeAbsences([{ date: '2026-10-20', kind: 'sick', half: true }], ['2026-10-19']);
+    expect(before.map((a) => a.date)).toEqual(['2026-10-19', '2026-10-20']);
+    expect((await db.settings.get('app'))?.absences).toEqual([{ date: '2026-10-20', kind: 'sick', half: true }]);
+    await data.updateSettings({ absences: before });
+    expect((await db.settings.get('app'))?.absences).toHaveLength(2);
+  });
+
   it('snapshot → replaceAll restores the same data', async () => {
     const a = await data.addNode({ parentId: null, name: 'A', kind: 'K', tags: ['t'] });
     await data.addEntry({ nodeId: a, start: 0, end: 1000, note: 'n' });

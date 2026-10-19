@@ -55,9 +55,17 @@
   next week. Wall-clock times are kept across DST, exact duplicates are
   skipped (so repeating it adds nothing), overlaps are reported, and Undo
   removes the copies.
+- Working time and overtime: set target hours per weekday, a start date and a
+  starting balance (Settings → Working time). The dashboard shows today, this
+  week and the overtime balance (up to yesterday); schedule day headers show
+  worked/target hours. Absences (vacation, sick, public holiday, other; full
+  or half day; ranges skip days off) credit their hours. Nodes can be
+  excluded from working time (inherited, e.g. a "Personal" branch).
 
 ### Fixed
 
+- Restoring a backup no longer announces budget overruns the backup already
+  contains.
 - Lists that overflowed could hide entries: the Manage tree was clipped by
   its sidebar (desktop and phone) instead of scrolling. Long context menus now
   scroll and are placed by their real size, the idle dialog scrolls on small

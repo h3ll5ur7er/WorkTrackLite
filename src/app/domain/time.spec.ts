@@ -2,10 +2,12 @@ import {
   addDays,
   atWallClockMinutes,
   daysFrom,
+  fromDateKey,
   fromLocalInput,
   isSameDay,
   startOfDay,
   startOfWeek,
+  toDateKey,
   toLocalInput,
   wallClockMinutes,
 } from './time';
@@ -78,5 +80,19 @@ describe('time (DST-aware calendar math)', () => {
     expect(fromLocalInput('2026-10-25T14:05:30')).toBe(t + 30_000);
     expect(fromLocalInput('not a date')).toBeNull();
     expect(fromLocalInput('')).toBeNull();
+  });
+});
+
+describe('date keys', () => {
+  it('round-trips local days, including the DST days', () => {
+    for (const day of [new Date(2026, 2, 29), new Date(2026, 9, 25), new Date(2026, 0, 1)]) {
+      expect(fromDateKey(toDateKey(day.getTime() + 13 * 3_600_000))).toBe(day.getTime());
+    }
+    expect(toDateKey(new Date(2026, 9, 25, 23, 59).getTime())).toBe('2026-10-25');
+  });
+  it('rejects malformed and impossible dates', () => {
+    expect(fromDateKey('2026-02-30')).toBeNull();
+    expect(fromDateKey('26-1-1')).toBeNull();
+    expect(fromDateKey('')).toBeNull();
   });
 });

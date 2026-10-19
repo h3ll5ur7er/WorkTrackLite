@@ -93,7 +93,21 @@
     <div class="sched__day-row">
       <div class="sched__gutter-spacer"></div>
       @for (d of days(); track d.ms) {
-        <div class="sched__day-head" [class.sched__day-head--today]="d.isToday">{{ d.label }}</div>
+        <div class="sched__day-head" [class.sched__day-head--today]="d.isToday">
+          {{ d.label }}
+          @if (dayWork()[$index]; as w) {
+            @if (w.absence) {
+              <span class="sched__day-work sched__day-work--off" [attr.data-testid]="'day-work-' + $index">{{
+                absenceLabel(w.absence)
+              }}</span>
+            }
+            @if (w.target || w.worked) {
+              <span class="sched__day-work" [class.sched__day-work--met]="w.worked >= w.target" [attr.data-testid]="'day-hours-' + $index"
+                >{{ formatHM(w.worked) }} / {{ formatHM(w.target) }}</span
+              >
+            }
+          }
+        </div>
       }
     </div>
 

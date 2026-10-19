@@ -15,6 +15,7 @@ import { ContextMenuComponent, MenuItem } from '../../shared/ui/context-menu.com
 import { EntryDraft, EntryEditorComponent, draftFields } from '../../shared/ui/entry-editor.component';
 import { TagChipsComponent } from '../../shared/ui/tag-chips.component';
 import { BurndownChartComponent } from './burndown-chart.component';
+import { WorkSummaryComponent } from './work-summary.component';
 
 interface CardBase {
   node: Node;
@@ -39,7 +40,15 @@ const REPEAT_GUARD_MS = 400;
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, BurndownChartComponent, ContextMenuComponent, EntryEditorComponent, LongPressDirective, TagChipsComponent],
+  imports: [
+    RouterLink,
+    BurndownChartComponent,
+    ContextMenuComponent,
+    EntryEditorComponent,
+    LongPressDirective,
+    TagChipsComponent,
+    WorkSummaryComponent,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

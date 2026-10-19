@@ -21,6 +21,7 @@ src/app/
     presence.service.ts  running timer in the tab title + app badge
     idle.service.ts    forgotten-timer guard (localStorage heartbeat)
     budget-alert.service.ts  toasts / notifications when a budget limit is crossed
+    worktime.service.ts  working-time summary for the dashboard and schedule
     shortcut-actions.ts  #/action/:name for app-icon shortcuts
   domain/              pure functions, no Angular or DB: unit-test these
     time.ts            DST-safe calendar math (never add 24h to change days)
@@ -41,6 +42,7 @@ src/app/
     entry-edit.ts      split, merge plans and neighbours, shifting and copying entries
     quick-start.ts     dashboard quick-start row: favourites + recent nodes
     budget-alerts.ts   budget alert levels and which rises to announce
+    worktime.ts        target hours, absences, worked per day, overtime balance
   features/            one folder per route (+ the first-run setup)
     dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command
