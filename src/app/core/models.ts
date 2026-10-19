@@ -100,6 +100,8 @@ export interface Settings {
   budgetNotifications?: boolean;
   /** Tag name → #rrggbb. */
   tagColors?: Record<string, string>;
+  /** Entries starting on or before this day (yyyy-mm-dd) are read-only (e.g. after invoicing). */
+  lockedUntil?: string;
   /** Working hours and overtime balance; undefined = off. */
   workTime?: WorkTime;
   /** Days off; their target hours count as worked. */

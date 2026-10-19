@@ -127,6 +127,14 @@
   gap: 6px;
 }
 
+.sched__lock {
+  font-size: 0.7rem;
+  margin-right: 2px;
+}
+.sched__col--locked {
+  background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(127, 127, 127, 0.14) 8px 10px);
+}
+
 .sched__day-work {
   display: block;
   font-size: 0.65rem;
@@ -289,6 +297,13 @@
   &--dragging {
     z-index: 4;
     box-shadow: 0 4px 16px var(--c-shadow);
+  }
+  &--locked {
+    cursor: default;
+    opacity: 0.8;
+    .block__handle {
+      display: none;
+    }
   }
   &--selected {
     z-index: 3;

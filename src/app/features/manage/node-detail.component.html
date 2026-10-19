@@ -261,10 +261,16 @@
                   <app-tag-chips [tags]="e.tags" />
                 </td>
                 <td class="entries__actions">
-                  @if (e.end !== null) {
-                    <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
+                  @if (isEntryLocked(e)) {
+                    <span title="Locked period: unlock it in Settings to change this entry"
+                      ><span aria-hidden="true">🔒</span><span class="visually-hidden">Locked</span></span
+                    >
+                  } @else {
+                    @if (e.end !== null) {
+                      <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
+                    }
+                    <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
                   }
-                  <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
                 </td>
               </tr>
             }

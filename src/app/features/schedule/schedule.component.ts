@@ -21,6 +21,7 @@ import { WorkTimeService } from '../../core/worktime.service';
 import { ABSENCE_KINDS } from '../../domain/worktime';
 import { readableTextColor } from '../../domain/color';
 import { mergeNeighbors, midpoint, planCopy, shiftEntry } from '../../domain/entry-edit';
+import { isLocked, lockEnd } from '../../domain/lock';
 import { formatClock, formatHM, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
 import { ScheduleView, ScheduleViewSetting, VIEW_DAYS, alignStart, resolveView, stepStart } from '../../domain/schedule-view';
@@ -140,6 +141,18 @@ export class ScheduleComponent {
     }));
   });
 
+  /** End of the locked period (null: nothing locked). */
+  private readonly lockEndMs = computed(() => lockEnd(this.data.settings().lockedUntil));
+  protected isEntryLocked(e: TimeEntry): boolean {
+    return isLocked(e.start, this.lockEndMs());
+  }
+  protected isDayLocked(dayStart: number): boolean {
+    return isLocked(dayStart, this.lockEndMs());
+  }
+  private lockedHint(): void {
+    this.toast.show('This entry is in a locked period. Unlock it in Settings to change it.');
+  }
+
   /** Worked / target hours and absences per visible day (empty while working time is off). */
   protected readonly dayWork = computed(() => (this.workTime.work() ? this.workTime.daysInfo(this.days().map((d) => d.ms)) : []));
 
@@ -163,6 +176,10 @@ export class ScheduleComponent {
   protected readonly menu = signal<MenuState | null>(null);
   protected readonly clipboard = signal<TimeEntry | null>(null);
   protected readonly editor = signal<EntryDraft | null>(null);
+  protected readonly editorLocked = computed(() => {
+    const d = this.editor();
+    return !!d?.id && isLocked(d.start, this.lockEndMs());
+  });
 
   protected readonly columns = computed<DaySegment[][]>(() => {
     const p = this.preview();
@@ -289,6 +306,7 @@ export class ScheduleComponent {
     // A new gesture: forget a click suppression left over from a drag that ended elsewhere.
     this.suppressClick = false;
     if (seg.entry.end == null) return; // running timers are not draggable
+    if (this.isEntryLocked(seg.entry)) return; // locked: click opens it read-only
     ev.preventDefault();
     const target = ev.currentTarget as HTMLElement;
     const col = target.closest('.sched__col') as HTMLElement | null;
@@ -430,7 +448,8 @@ export class ScheduleComponent {
       this.openMenu({ x: r.left, y: r.top, entry: seg.entry });
     } else if (ev.key === 'Delete' || ev.key === 'Backspace') {
       ev.preventDefault();
-      if (this.isSelected(seg.entry.id)) void this.deleteSelection();
+      if (this.isEntryLocked(seg.entry)) this.lockedHint();
+      else if (this.isSelected(seg.entry.id)) void this.deleteSelection();
       else if (seg.entry.end != null) void this.deleteEntry(seg.entry.id);
     }
   }
@@ -462,6 +481,13 @@ export class ScheduleComponent {
     if ('entry' in m) {
       const e = m.entry;
       if (e.end == null) return [{ label: 'Stop timer', run: () => this.timer.stop() }];
+      if (this.isEntryLocked(e)) {
+        return [
+          { label: 'View…', run: () => this.openEditor(e) },
+          { label: 'Copy', run: () => this.clipboard.set({ ...e }) },
+          { label: '🔒 Locked period', disabled: true, run: () => undefined },
+        ];
+      }
       const splitAt = m.at != null && m.at > e.start && m.at < e.end ? m.at : null;
       const half = midpoint(e);
       const { prev, next } = mergeNeighbors(this.data.entries(), e);
@@ -472,7 +498,7 @@ export class ScheduleComponent {
       ];
       if (splitAt != null) items.push({ label: `Split at ${formatClock(splitAt)}`, run: () => this.split(e, splitAt) });
       else if (half != null) items.push({ label: 'Split in half', run: () => this.split(e, half) });
-      if (prev) items.push({ label: 'Merge with previous', run: () => this.merge([prev.id, e.id]) });
+      if (prev && !this.isEntryLocked(prev)) items.push({ label: 'Merge with previous', run: () => this.merge([prev.id, e.id]) });
       if (next) items.push({ label: 'Merge with next', run: () => this.merge([e.id, next.id]) });
       items.push(
         { label: this.isSelected(e.id) ? 'Deselect' : 'Select', run: () => this.toggleSelected(e) },
@@ -488,9 +514,10 @@ export class ScheduleComponent {
     const at = atWallClockMinutes(m.dayStart, m.minutes);
     const cb = this.clipboard();
     const nextDay = addDays(m.dayStart, 1);
+    const dayLocked = this.isDayLocked(m.dayStart);
     return [
-      { label: 'New entry here…', run: () => this.openEditor(null, at) },
-      { label: cb ? `Paste ${this.nodeName(cb)}` : 'Paste', disabled: !cb, run: () => cb && this.paste(cb, at) },
+      { label: dayLocked ? 'New entry here… (locked)' : 'New entry here…', disabled: dayLocked, run: () => this.openEditor(null, at) },
+      { label: cb ? `Paste ${this.nodeName(cb)}` : 'Paste', disabled: !cb || dayLocked, run: () => cb && this.paste(cb, at) },
       { label: 'Copy this day to the next day', run: () => this.copyRange(m.dayStart, nextDay, 1, 'to the next day') },
       { label: 'Copy this day to next week', run: () => this.copyRange(m.dayStart, nextDay, 7, 'to next week') },
     ];
@@ -590,6 +617,10 @@ export class ScheduleComponent {
 
   protected toggleSelected(e: TimeEntry): void {
     if (e.end == null) return;
+    if (this.isEntryLocked(e)) {
+      this.lockedHint();
+      return;
+    }
     const next = new Set(this.selectedEntries().map((x) => x.id));
     if (!next.delete(e.id)) next.add(e.id);
     this.selected.set(next);
@@ -696,7 +727,11 @@ export class ScheduleComponent {
     if (!nodeId) return;
     ev.preventDefault();
     const start = atWallClockMinutes(dayStart, minutes);
-    await this.data.addEntry({ nodeId, start, end: start + MS_PER_HOUR });
+    try {
+      await this.data.addEntry({ nodeId, start, end: start + MS_PER_HOUR });
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : String(e));
+    }
   }
 
   protected isPreviewing(seg: DaySegment): boolean {

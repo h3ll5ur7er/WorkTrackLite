@@ -192,6 +192,7 @@ function toSettings(v: unknown): Settings {
   }
   if (typeof o['idleGuard'] === 'boolean') s.idleGuard = o['idleGuard'];
   if (typeof o['budgetAlerts'] === 'boolean') s.budgetAlerts = o['budgetAlerts'];
+  if (typeof o['lockedUntil'] === 'string' && fromDateKey(o['lockedUntil']) != null) s.lockedUntil = o['lockedUntil'];
   const wt = o['workTime'];
   if (
     isObject(wt) &&

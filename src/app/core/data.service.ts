@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { Observable, liveQuery } from 'dexie';
 import { BackupData } from '../domain/backup';
 import { planMerge, splitRanges } from '../domain/entry-edit';
+import { LockedError, isLocked, lockEnd, lockProblem } from '../domain/lock';
 import { TreeIndex, closedSubtreeSeconds, entriesByNode, reorderSiblings } from '../domain/tree';
 import { WORKTRACK_DB, uid } from './db';
 import { Absence, Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry, WorkTime } from './models';
@@ -192,10 +193,14 @@ export class DataService {
 
   /** Deletes a node, its descendants and all their entries. Returns what was removed (for undo). */
   async deleteNodeCascade(id: string): Promise<{ nodes: Node[]; entries: TimeEntry[] }> {
-    return this.db.transaction('rw', this.db.nodes, this.db.entries, async () => {
+    return this.db.transaction('rw', this.db.nodes, this.db.entries, this.db.settings, async () => {
       const ids = new TreeIndex(await this.db.nodes.toArray()).subtreeIds(id);
       const nodes = (await this.db.nodes.bulkGet(ids)).filter((n): n is Node => !!n);
       const entries = await this.db.entries.where('nodeId').anyOf(ids).toArray();
+      const until = (await this.db.settings.get('app'))?.lockedUntil;
+      if (until && entries.some((e) => isLocked(e.start, lockEnd(until)))) {
+        throw new Error(`${new LockedError(until).message} Archive the node instead to hide it.`);
+      }
       await this.db.entries.bulkDelete(entries.map((e) => e.id));
       await this.db.nodes.bulkDelete(ids);
       return { nodes, entries };
@@ -219,29 +224,38 @@ export class DataService {
   }
 
   // --- Entries ---------------------------------------------------------------
+  //
+  // Every entry write runs in one transaction with the settings table and refuses
+  // to touch a locked period (Settings.lockedUntil, see domain/lock.ts): neither
+  // the old nor the new version of an entry may start inside it.
 
   /** Adds a closed entry. Rejects empty or inverted ranges. */
   async addEntry(input: NewEntry): Promise<string> {
     assertRange(input.start, input.end);
     const now = Date.now();
     const e: TimeEntry = { id: uid(), ...input, createdAt: now, updatedAt: now };
-    await this.db.entries.add(e);
+    await this.entryTx(async (guard) => {
+      guard(e);
+      await this.db.entries.add(e);
+    });
     return e.id;
   }
 
   async updateEntry(id: string, patch: EntryPatch): Promise<void> {
-    await this.db.transaction('rw', this.db.entries, async () => {
+    await this.entryTx(async (guard) => {
       const cur = await this.db.entries.get(id);
       if (!cur) throw new Error('Entry no longer exists.');
       const next = { ...cur, ...patch };
       if (next.end != null) assertRange(next.start, next.end);
+      guard(cur, next);
       await this.db.entries.put({ ...next, updatedAt: Date.now() });
     });
   }
 
   async deleteEntry(id: string): Promise<TimeEntry | undefined> {
-    return this.db.transaction('rw', this.db.entries, async () => {
+    return this.entryTx(async (guard) => {
       const e = await this.db.entries.get(id);
+      if (e) guard(e);
       await this.db.entries.delete(id);
       return e;
     });
@@ -249,12 +263,16 @@ export class DataService {
 
   /** Re-inserts entries (used by undo). */
   async restoreEntries(entries: TimeEntry[]): Promise<void> {
-    await this.db.entries.bulkPut(entries);
+    await this.entryTx(async (guard) => {
+      guard(...entries, ...(await this.db.entries.bulkGet(entries.map((e) => e.id))).filter((e): e is TimeEntry => !!e));
+      await this.db.entries.bulkPut(entries);
+    });
   }
 
   /** Undo for split/merge: puts the old versions back and removes entries that were created. */
   async revertEntries(restore: TimeEntry[], removeIds: string[]): Promise<void> {
-    await this.db.transaction('rw', this.db.entries, async () => {
+    await this.entryTx(async (guard) => {
+      guard(...restore, ...(await this.db.entries.bulkGet(removeIds)).filter((e): e is TimeEntry => !!e));
       await this.db.entries.bulkDelete(removeIds);
       await this.db.entries.bulkPut(restore);
     });
@@ -262,11 +280,12 @@ export class DataService {
 
   /** Splits a closed entry at `at`. Returns the original (for undo) and the id of the second half. */
   async splitEntry(id: string, at: number): Promise<{ original: TimeEntry; newId: string }> {
-    return this.db.transaction('rw', this.db.entries, async () => {
+    return this.entryTx(async (guard) => {
       const original = await this.db.entries.get(id);
       if (!original) throw new Error('Entry no longer exists.');
       const parts = splitRanges(original, at);
       if (!parts) throw new Error('Pick a time inside the entry.');
+      guard(original);
       const now = Date.now();
       const newId = uid();
       await this.db.entries.bulkPut([
@@ -279,10 +298,11 @@ export class DataService {
 
   /** Merges entries into the earliest one (see `planMerge`). Returns the originals for undo. */
   async mergeEntries(ids: string[]): Promise<{ originals: TimeEntry[]; mergedId: string; gapMs: number }> {
-    return this.db.transaction('rw', this.db.entries, async () => {
+    return this.entryTx(async (guard) => {
       const originals = await this.existingEntries(ids);
       const plan = planMerge(originals);
       if ('error' in plan) throw new Error(plan.error);
+      guard(...originals);
       await this.db.entries.bulkDelete(plan.removeIds);
       await this.db.entries.put({ ...plan.merged, updatedAt: Date.now() });
       return { originals, mergedId: plan.merged.id, gapMs: plan.gapMs };
@@ -291,12 +311,13 @@ export class DataService {
 
   /** Applies a change to several closed entries at once. Returns the previous versions for undo. */
   async updateEntries(ids: string[], change: (e: TimeEntry) => EntryPatch): Promise<TimeEntry[]> {
-    return this.db.transaction('rw', this.db.entries, async () => {
+    return this.entryTx(async (guard) => {
       const originals = await this.existingEntries(ids);
       if (originals.some((e) => e.end == null)) throw new Error('A running timer cannot be edited together with other entries.');
       const now = Date.now();
       const next = originals.map((e) => ({ ...e, ...change(e), updatedAt: now }));
       for (const e of next) assertRange(e.start, e.end!);
+      guard(...originals, ...next);
       await this.db.entries.bulkPut(next);
       return originals;
     });
@@ -307,13 +328,17 @@ export class DataService {
     for (const e of inputs) assertRange(e.start, e.end);
     const now = Date.now();
     const rows: TimeEntry[] = inputs.map((e) => ({ id: uid(), ...e, createdAt: now, updatedAt: now }));
-    await this.db.transaction('rw', this.db.entries, () => this.db.entries.bulkAdd(rows));
+    await this.entryTx(async (guard) => {
+      guard(...rows);
+      await this.db.entries.bulkAdd(rows);
+    });
     return rows.map((e) => e.id);
   }
 
   async deleteEntries(ids: string[]): Promise<TimeEntry[]> {
-    return this.db.transaction('rw', this.db.entries, async () => {
+    return this.entryTx(async (guard) => {
       const originals = await this.existingEntries(ids);
+      guard(...originals);
       await this.db.entries.bulkDelete(originals.map((e) => e.id));
       return originals;
     });
@@ -323,6 +348,36 @@ export class DataService {
     const found = await this.db.entries.bulkGet(ids);
     if (found.some((e) => !e)) throw new Error('Some entries no longer exist.');
     return found as TimeEntry[];
+  }
+
+  /**
+   * Runs `body` in a read-write transaction over entries and settings. `guard`
+   * throws a LockedError if any given entry starts inside the locked period,
+   * which aborts the whole transaction.
+   */
+  private entryTx<T>(body: (guard: (...entries: Pick<TimeEntry, 'start'>[]) => void) => Promise<T>): Promise<T> {
+    return this.db.transaction('rw', this.db.entries, this.db.settings, async () => {
+      const until = (await this.db.settings.get('app'))?.lockedUntil;
+      const end = lockEnd(until);
+      return body((...entries) => {
+        if (until && entries.some((e) => isLocked(e.start, end))) throw new LockedError(until);
+      });
+    });
+  }
+
+  /** Locks every entry that starts on or before `lockedUntil` (yyyy-mm-dd); `undefined` unlocks. */
+  async setLockedUntil(lockedUntil: string | undefined, now = Date.now()): Promise<string | undefined> {
+    return this.db.transaction('rw', this.db.entries, this.db.settings, async () => {
+      if (lockedUntil) {
+        const open = await this.db.entries.filter((e) => e.end == null).toArray();
+        const running = open.sort((a, b) => b.start - a.start)[0] ?? null;
+        const problem = lockProblem(lockedUntil, now, running);
+        if (problem) throw new Error(problem);
+      }
+      const cur = { ...DEFAULT_SETTINGS, ...(await this.db.settings.get('app')) };
+      await this.db.settings.put({ ...cur, lockedUntil, id: 'app' });
+      return cur.lockedUntil;
+    });
   }
 
   // --- Settings --------------------------------------------------------------

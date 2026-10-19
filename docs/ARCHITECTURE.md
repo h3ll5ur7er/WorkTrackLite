@@ -43,6 +43,7 @@ src/app/
     quick-start.ts     dashboard quick-start row: favourites + recent nodes
     budget-alerts.ts   budget alert levels and which rises to announce
     worktime.ts        target hours, absences, worked per day, overtime balance
+    lock.ts            locked period: which entries are read-only (enforced in DataService)
   features/            one folder per route (+ the first-run setup)
     dashboard/  schedule/  reports/  manage/  settings/  setup/
   shared/              reusable UI: entry editor, context menu, command

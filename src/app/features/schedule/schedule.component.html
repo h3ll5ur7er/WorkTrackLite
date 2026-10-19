@@ -94,6 +94,11 @@
       <div class="sched__gutter-spacer"></div>
       @for (d of days(); track d.ms) {
         <div class="sched__day-head" [class.sched__day-head--today]="d.isToday">
+          @if (isDayLocked(d.ms)) {
+            <span class="sched__lock" title="Locked period"
+              ><span aria-hidden="true">🔒</span><span class="visually-hidden">Locked:</span></span
+            >
+          }
           {{ d.label }}
           @if (dayWork()[$index]; as w) {
             @if (w.absence) {
@@ -123,6 +128,7 @@
             #col
             class="sched__col"
             [class.sched__col--today]="d.isToday"
+            [class.sched__col--locked]="isDayLocked(d.ms)"
             [class.sched__col--drop]="dropGhost()?.dayIdx === dayIdx"
             [attr.data-day]="dayIdx"
             [attr.aria-label]="d.label"
@@ -157,6 +163,7 @@
                 [class.block--overlap]="seg.overlap"
                 [class.block--dragging]="isPreviewing(seg)"
                 [class.block--selected]="isSelected(seg.entry.id)"
+                [class.block--locked]="isEntryLocked(seg.entry)"
                 [attr.aria-pressed]="selecting() && seg.entry.end !== null ? isSelected(seg.entry.id) : null"
                 [style.top.%]="(seg.topMin / 1440) * 100"
                 [style.height.%]="(seg.heightMin / 1440) * 100"
@@ -193,6 +200,12 @@
   }
 
   @if (editor(); as d) {
-    <app-entry-editor [draft]="d" (saved)="onEditorSave($event)" (cancelled)="editor.set(null)" (deleted)="onEditorDelete($event)" />
+    <app-entry-editor
+      [draft]="d"
+      [readonly]="editorLocked()"
+      (saved)="onEditorSave($event)"
+      (cancelled)="editor.set(null)"
+      (deleted)="onEditorDelete($event)"
+    />
   }
 </div>

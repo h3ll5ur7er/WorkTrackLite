@@ -61,6 +61,12 @@
   worked/target hours. Absences (vacation, sick, public holiday, other; full
   or half day; ranges skip days off) credit their hours. Nodes can be
   excluded from working time (inherited, e.g. a "Personal" branch).
+- Lock a period (Settings → Locked period, e.g. after invoicing): entries
+  starting on or before the chosen day cannot be added, changed, moved, split,
+  merged or deleted, and a node with locked entries cannot be deleted (archive
+  it instead). Locked days are hatched in the schedule and their entries open
+  read-only. Only past days can be locked, and not under a running timer;
+  unlocking is one click.
 
 ### Fixed
 

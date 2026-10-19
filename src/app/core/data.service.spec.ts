@@ -139,6 +139,59 @@ describe('DataService', () => {
     await waitFor(() => data.closedSubtreeSeconds().get(a) === 60);
   });
 
+  describe('locked period', () => {
+    const H = 3_600_000;
+    const sep = (d: number, h = 9) => new Date(2026, 8, d, h).getTime();
+    const oct = (d: number, h = 9) => new Date(2026, 9, d, h).getTime();
+
+    beforeEach(async () => {
+      await db.entries.bulkAdd([
+        makeEntry({ id: 'old', nodeId: 'n', start: sep(30, 22), end: oct(1, 1) }), // crosses the lock end
+        makeEntry({ id: 'new', nodeId: 'n', start: oct(2), end: oct(2) + H }),
+      ]);
+      await data.setLockedUntil('2026-09-30', oct(15));
+    });
+
+    it('refuses every change that touches a locked entry or creates one', async () => {
+      const locked = /are locked/;
+      await expect(data.updateEntry('old', { note: 'x' })).rejects.toThrow(locked);
+      await expect(data.updateEntry('new', { start: sep(29), end: sep(29) + H })).rejects.toThrow(locked);
+      await expect(data.deleteEntry('old')).rejects.toThrow(locked);
+      await expect(data.addEntry({ nodeId: 'n', start: sep(1), end: sep(1) + H })).rejects.toThrow(locked);
+      await expect(
+        data.addEntries([
+          { nodeId: 'n', start: oct(3), end: oct(3) + H },
+          { nodeId: 'n', start: sep(3), end: sep(3) + H },
+        ]),
+      ).rejects.toThrow(locked);
+      await expect(data.splitEntry('old', oct(1, 0))).rejects.toThrow(locked);
+      await expect(data.deleteEntries(['new', 'old'])).rejects.toThrow(locked);
+      await expect(data.updateEntries(['new', 'old'], () => ({ nodeId: 'm' }))).rejects.toThrow(locked);
+      await expect(data.restoreEntries([makeEntry({ id: 'back', nodeId: 'n', start: sep(5) })])).rejects.toThrow(locked);
+      await expect(data.deleteNodeCascade('n')).rejects.toThrow(/Archive the node instead/);
+      // Nothing changed.
+      expect((await db.entries.toArray()).map((e) => [e.id, e.note, e.nodeId])).toEqual([
+        ['new', undefined, 'n'],
+        ['old', undefined, 'n'],
+      ]);
+    });
+
+    it('allows changes after the period, and everything once unlocked', async () => {
+      await data.updateEntry('new', { note: 'fine' });
+      await data.addEntry({ nodeId: 'n', start: oct(1, 9), end: oct(1, 10) });
+      expect(await data.setLockedUntil(undefined)).toBe('2026-09-30');
+      await data.updateEntry('old', { note: 'now ok' });
+      expect((await db.entries.get('old'))?.note).toBe('now ok');
+    });
+
+    it('cannot lock today or a period with a running timer in it', async () => {
+      await expect(data.setLockedUntil('2026-10-15', oct(15, 12))).rejects.toThrow('before today');
+      await db.entries.add(makeEntry({ id: 'run', nodeId: 'n', start: oct(10), end: null }));
+      await expect(data.setLockedUntil('2026-10-12', oct(15, 12))).rejects.toThrow('running timer');
+      expect((await db.settings.get('app'))?.lockedUntil).toBe('2026-09-30');
+    });
+  });
+
   describe('split, merge and bulk edits', () => {
     const H = 3_600_000;
     const T = new Date(2026, 9, 20, 9).getTime();
