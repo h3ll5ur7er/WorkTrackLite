@@ -176,10 +176,10 @@ body {
 }
 
 /*
- * Toasts sit above everything, so while a dialog, menu or the palette is open
+ * Toasts sit above everything, so while a dialog, menu, the palette or the note form is open
  * they move to the top edge instead of covering its buttons.
  */
-body:has(.modal, .ctx, .cp__panel, .idle) .toasts {
+body:has(.modal, .ctx, .cp__panel, .idle, .rn) .toasts {
   top: 12px;
   bottom: auto;
 }

@@ -42,6 +42,9 @@
   the dashboard's quick-start row shows favourites and the five most recently
   used nodes for one-tap start/stop. Favourites sort first on the dashboard
   and in the command palette. Included in backups.
+- Notes and tags on the running timer: the timer bar shows the note and tags
+  of the running entry; click it to edit them without stopping the timer
+  (Enter saves, Escape cancels).
 
 ### Fixed
 
