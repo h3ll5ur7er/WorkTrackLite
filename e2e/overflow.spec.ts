@@ -99,7 +99,7 @@ async function unreachable(page: Page): Promise<string[]> {
   });
 }
 
-const PAGES = ['dashboard', 'schedule', 'manage/c0p0t0', 'manage', 'reports', 'settings'];
+const PAGES = ['dashboard', 'schedule', 'manage/c0p0t0', 'manage', 'reports', 'settings', 'search?q=task'];
 
 for (const tag of ['desktop', '@mobile']) {
   test.describe(`${tag}: nothing is out of reach with lots of data`, () => {

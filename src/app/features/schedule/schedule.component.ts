@@ -5,7 +5,11 @@ import {
   DestroyRef,
   ElementRef,
   afterNextRender,
+  afterRenderEffect,
   computed,
+  effect,
+  input,
+  untracked,
   inject,
   linkedSignal,
   signal,
@@ -105,6 +109,7 @@ export class ScheduleComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly timer = inject(TimerService);
   private readonly toast = inject(ToastService);
+  private readonly host = inject(ElementRef);
   private readonly workTime = inject(WorkTimeService);
 
   protected readonly hours = Array.from({ length: 24 }, (_, i) => i);
@@ -115,6 +120,11 @@ export class ScheduleComponent {
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   private readonly weekStartsOn = computed(() => this.data.settings().weekStartsOn ?? 1);
+
+  /** Query parameters from search results: show the days around `at` and highlight `entry`. */
+  readonly at = input<string | undefined>();
+  readonly entry = input<string | undefined>();
+  protected readonly found = computed(() => this.entry() ?? null);
 
   /** Day / 3 days / Week, or automatic by screen width. Remembered per device. */
   protected readonly viewSetting = signal<ScheduleViewSetting>(readViewSetting());
@@ -313,10 +323,33 @@ export class ScheduleComponent {
   }
 
   constructor() {
-    // Start scrolled to an hour before now (or 7:00) instead of midnight.
+    // Jump to a search result's days (when opened with ?at=…).
+    effect(() => {
+      const at = Number(this.at());
+      if (this.at() && Number.isFinite(at)) {
+        const view = untracked(() => this.view());
+        this.rangeStart.set(
+          alignStart(
+            view,
+            at,
+            untracked(() => this.weekStartsOn()),
+          ),
+        );
+      }
+    });
+    // Start scrolled to the found entry, else an hour before now (or 7:00) instead of midnight.
     afterNextRender(() => {
-      const hour = Math.max(0, Math.min(new Date().getHours() - 1, 7));
+      const at = Number(this.at());
+      const hour =
+        this.at() && Number.isFinite(at) ? Math.max(0, new Date(at).getHours() - 1) : Math.max(0, Math.min(new Date().getHours() - 1, 7));
       this.scroller()?.nativeElement.scrollTo?.({ top: hour * HOUR_HEIGHT_PX });
+    });
+    // Focus the found entry once it is rendered.
+    afterRenderEffect(() => {
+      const id = this.found();
+      if (!id || this.columns().length === 0) return;
+      const el = (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(id)}"]`);
+      if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
     });
     inject(DestroyRef).onDestroy(() => this.endDrag());
   }

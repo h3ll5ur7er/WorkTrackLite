@@ -4,6 +4,7 @@ import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { ManageComponent } from './features/manage/manage.component';
 import { ReportsComponent } from './features/reports/reports.component';
 import { ScheduleComponent } from './features/schedule/schedule.component';
+import { SearchComponent } from './features/search/search.component';
 import { SettingsComponent } from './features/settings/settings.component';
 
 // Routes are eagerly loaded on purpose: the single-file build inlines exactly
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'manage', component: ManageComponent, title: 'Manage · WorkTrackLite' },
   { path: 'manage/:nodeId', component: ManageComponent, title: 'Manage · WorkTrackLite' },
   { path: 'settings', component: SettingsComponent, title: 'Settings · WorkTrackLite' },
+  { path: 'search', component: SearchComponent, title: 'Search · WorkTrackLite' },
   // App-icon shortcuts (web manifest): run the action, then redirect.
   { path: 'action/:name', canActivate: [shortcutActionGuard], children: [] },
   { path: '**', redirectTo: 'dashboard' },

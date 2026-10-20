@@ -194,6 +194,7 @@
                 [class.block--dragging]="isPreviewing(seg)"
                 [class.block--selected]="isSelected(seg.entry.id)"
                 [class.block--locked]="isEntryLocked(seg.entry)"
+                [class.block--found]="found() === seg.entry.id"
                 [attr.aria-pressed]="selecting() && seg.entry.end !== null ? isSelected(seg.entry.id) : null"
                 [style.top.%]="(seg.topMin / 1440) * 100"
                 [style.height.%]="(seg.heightMin / 1440) * 100"

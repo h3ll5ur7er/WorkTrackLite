@@ -45,8 +45,9 @@ src/app/
     worktime.ts        target hours, absences, worked per day, overtime balance
     lock.ts            locked period: which entries are read-only (enforced in DataService)
     recurring.ts       recurring rules → pending suggestions per day
+    search.ts          entry search (accent-folding, #tags) and highlighting
   features/            one folder per route (+ the first-run setup)
-    dashboard/  schedule/  reports/  manage/  settings/  setup/
+    dashboard/  schedule/  reports/  manage/  settings/  search/  setup/
   shared/              reusable UI: entry editor, context menu, command
                        palette, timer bar, toasts, long-press directive,
                        colour picker, tag chips, idle dialog, password prompt

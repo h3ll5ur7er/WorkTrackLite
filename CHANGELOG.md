@@ -74,6 +74,10 @@
   confirms the visible days at once. Nothing is created without a click;
   occurrences already covered by an entry on that node, on full-day absences
   or in a locked period are not suggested. Rules can be paused.
+- Search all entries (🔍 in the header, or type in the command palette and pick
+  "Search entries for …"): every word must appear in the note, tags or node
+  path; accents are ignored and `#tag` matches tags by prefix. Results show
+  highlights and a total, export to CSV, and open the schedule at that entry.
 
 ### Fixed
 

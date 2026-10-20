@@ -355,6 +355,11 @@
     z-index: 4;
     box-shadow: 0 4px 16px var(--c-shadow);
   }
+  &--found {
+    z-index: 3;
+    outline: 3px solid var(--c-warn);
+    outline-offset: 1px;
+  }
   &--locked {
     cursor: default;
     opacity: 0.8;
