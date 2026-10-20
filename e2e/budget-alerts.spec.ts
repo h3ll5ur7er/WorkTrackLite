@@ -1,4 +1,5 @@
-import { H, backupJson, expect, seed, test, zurich } from './fixtures';
+import { Page } from '@playwright/test';
+import { H, backupJson, expect, readStore, seed, test, zurich } from './fixtures';
 
 const NOW = zurich('2026-10-21T15:00');
 const MIN = 60_000;
@@ -50,17 +51,51 @@ test('a running timer crossing the warning threshold, then the budget, alerts on
   await expect(page.locator('.toast', { hasText: /over its budget|warning threshold/ })).toHaveCount(0);
 });
 
-test('alerts can be turned off; system notifications ask for permission', async ({ page, context }) => {
+/**
+ * A stand-in for the browser's Notification API that answers the permission
+ * prompt with `answer`. Real headless browsers differ (CI's reports "denied"
+ * even after grantPermissions), so the tests decide the answer themselves.
+ */
+async function fakeNotifications(page: Page, answer: NotificationPermission): Promise<void> {
+  await page.addInitScript((a) => {
+    class FakeNotification {
+      static permission: NotificationPermission = 'default';
+      static async requestPermission(): Promise<NotificationPermission> {
+        FakeNotification.permission = a;
+        return a;
+      }
+    }
+    Object.defineProperty(window, 'Notification', { value: FakeNotification, configurable: true, writable: true });
+  }, answer);
+}
+
+test('alerts can be turned off', async ({ page }) => {
   await page.clock.install({ time: new Date(NOW) });
   await seed(page, backupJson(nodes, [{ id: 'run', nodeId: 'web', start: NOW - 7 * H - 59 * MIN, end: null }], SETTINGS));
   await page.goto('/#/settings');
   await page.getByLabel(/Tell me when a node reaches its warning threshold/).uncheck();
   await page.clock.runFor(MIN + 2000);
   await expect(page.locator('.toast', { hasText: 'warning threshold' })).toHaveCount(0);
+});
 
-  await page.getByLabel(/Tell me when a node reaches/).check();
-  await context.grantPermissions(['notifications']);
+test('system notifications ask for permission and stay on when it is granted', async ({ page }) => {
+  await fakeNotifications(page, 'granted');
+  await seed(page, backupJson(nodes, [], SETTINGS));
+  await page.goto('/#/settings');
   const system = page.getByLabel(/Also as a system notification/);
   await system.check();
   await expect(system).toBeChecked();
+  await expect.poll(async () => (await readStore<{ budgetNotifications?: boolean }>(page, 'settings'))[0].budgetNotifications).toBe(true);
+});
+
+test('regression: a refused permission leaves system notifications off and says so', async ({ page }) => {
+  await fakeNotifications(page, 'denied');
+  await seed(page, backupJson(nodes, [], SETTINGS));
+  await page.goto('/#/settings');
+  const system = page.getByLabel(/Also as a system notification/);
+  await system.click();
+  await expect(page.getByText('Notifications were not allowed; alerts stay in the app.')).toBeVisible();
+  await expect(system).not.toBeChecked();
+  await expect(page.getByText(/Notifications are blocked for this site/)).toBeVisible();
+  expect((await readStore<{ budgetNotifications?: boolean }>(page, 'settings'))[0].budgetNotifications).toBeFalsy();
 });
