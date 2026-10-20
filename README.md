@@ -12,14 +12,22 @@ file** you can open straight from disk.
   notes and tags; reorder, move or archive nodes at any time.
 - **Budgets per node, covering its whole subtree:**
   `none` (track only), `target` (count up towards a goal) or `fixed` (burns down,
-  goes negative on overshoot), each with an optional early-warning threshold.
-- **Dashboard** of leaf nodes with burn-down charts. Click a card to start or
-  stop its timer; every timer action can be undone. The running timer also shows
-  in the tab title and on the installed app's icon.
+  goes negative on overshoot), each with an optional early-warning threshold, and
+  an alert (toast or system notification) when a limit is crossed.
+- **Dashboard** of leaf nodes with burn-down charts and a quick-start row of
+  favourites and recently used nodes. Click to start or stop a timer; every timer
+  action can be undone. The running timer also shows in the tab title and on the
+  installed app's icon, and its note and tags can be edited while it runs.
 - **Schedule** as day, 3-day or week view (automatic by screen size) with
   drag-to-move, resize, snapping (15 min, or 1 min with <kbd>Shift</kbd>),
-  copy/paste, drag-from-tree, split and merge, and multi-select to move, reassign
-  or delete several entries at once.
+  copy/paste, drag-from-tree, split and merge, multi-select to move, reassign
+  or delete several entries at once, "copy from last week", and recurring entries
+  offered as suggestions to confirm.
+- **Working time**: target hours per weekday, absences (vacation, sick, holidays,
+  half days) and an overtime balance on the dashboard.
+- **Locked periods**: after invoicing, make a period read-only.
+- **Search** across all notes, tags and node names (accent-insensitive, `#tag`),
+  with CSV export of the results.
 - **Forgotten-timer guard**: after sleep, a closed tab, 8 h+ or midnight, it asks
   whether to drop the away time, stop at a chosen time, or keep it.
 - **Colours** per node (inherited) and per tag.

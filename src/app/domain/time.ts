@@ -54,6 +54,20 @@ export function daysFrom(firstDay: number, count: number): number[] {
   return Array.from({ length: count }, (_, i) => addDays(startOfDay(firstDay), i));
 }
 
+/** `yyyy-mm-dd` of the local day containing `ms` (also the value of `<input type="date">`). */
+export function toDateKey(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Local midnight of a `yyyy-mm-dd` day, or null if it is not a real date. */
+export function fromDateKey(key: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return d.getMonth() === +m[2] - 1 && d.getDate() === +m[3] ? d.getTime() : null;
+}
+
 /** Formats epoch ms for an `<input type="datetime-local">` (local time, minute precision). */
 export function toLocalInput(ms: number): string {
   const d = new Date(ms);

@@ -5,7 +5,11 @@ import {
   DestroyRef,
   ElementRef,
   afterNextRender,
+  afterRenderEffect,
   computed,
+  effect,
+  input,
+  untracked,
   inject,
   linkedSignal,
   signal,
@@ -14,11 +18,16 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { renderNow } from '../../shared/render-now';
 import { DataService } from '../../core/data.service';
-import { Node, TimeEntry } from '../../core/models';
+import { Absence, Node, TimeEntry } from '../../core/models';
 import { TimerService } from '../../core/timer.service';
 import { ToastService } from '../../core/toast.service';
+import { WorkTimeService } from '../../core/worktime.service';
+import { uid } from '../../core/db';
+import { ABSENCE_KINDS } from '../../domain/worktime';
 import { readableTextColor } from '../../domain/color';
-import { mergeNeighbors, midpoint, shiftEntry } from '../../domain/entry-edit';
+import { mergeNeighbors, midpoint, planCopy, shiftEntry } from '../../domain/entry-edit';
+import { isLocked, lockEnd } from '../../domain/lock';
+import { Suggestion, WEEKDAY_NAMES, WORKDAYS, ruleFromEntry, suggestions, weekdaysLabel } from '../../domain/recurring';
 import { formatClock, formatHM, formatRange } from '../../domain/format';
 import { DaySegment, layoutWeek, snapToGrid, snapToNeighbors } from '../../domain/schedule-layout';
 import { ScheduleView, ScheduleViewSetting, VIEW_DAYS, alignStart, resolveView, stepStart } from '../../domain/schedule-view';
@@ -72,7 +81,16 @@ interface DragState {
 }
 
 /** `at`: the time under the pointer when the menu was opened on an entry (split point). */
-type MenuState = { x: number; y: number } & ({ entry: TimeEntry; at?: number | null } | { dayStart: number; minutes: number });
+type MenuState = { x: number; y: number } & (
+  | { entry: TimeEntry; at?: number | null }
+  | { dayStart: number; minutes: number }
+  /** The header's ⋯ menu (actions for the visible range). */
+  | { page: true }
+  /** A recurring entry's suggested occurrence. */
+  | { suggestion: Suggestion }
+  /** All suggestions of one visible day (from the day header). */
+  | { daySuggestions: number }
+);
 interface Range {
   start: number;
   end: number;
@@ -91,6 +109,8 @@ export class ScheduleComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly timer = inject(TimerService);
   private readonly toast = inject(ToastService);
+  private readonly host = inject(ElementRef);
+  private readonly workTime = inject(WorkTimeService);
 
   protected readonly hours = Array.from({ length: 24 }, (_, i) => i);
   protected readonly dayHeightPx = 24 * HOUR_HEIGHT_PX;
@@ -100,6 +120,11 @@ export class ScheduleComponent {
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   private readonly weekStartsOn = computed(() => this.data.settings().weekStartsOn ?? 1);
+
+  /** Query parameters from search results: show the days around `at` and highlight `entry`. */
+  readonly at = input<string | undefined>();
+  readonly entry = input<string | undefined>();
+  protected readonly found = computed(() => this.entry() ?? null);
 
   /** Day / 3 days / Week, or automatic by screen width. Remembered per device. */
   protected readonly viewSetting = signal<ScheduleViewSetting>(readViewSetting());
@@ -132,6 +157,113 @@ export class ScheduleComponent {
     }));
   });
 
+  /** End of the locked period (null: nothing locked). */
+  private readonly lockEndMs = computed(() => lockEnd(this.data.settings().lockedUntil));
+  protected isEntryLocked(e: TimeEntry): boolean {
+    return isLocked(e.start, this.lockEndMs());
+  }
+  protected isDayLocked(dayStart: number): boolean {
+    return isLocked(dayStart, this.lockEndMs());
+  }
+  private lockedHint(): void {
+    this.toast.show('This entry is in a locked period. Unlock it in Settings to change it.');
+  }
+
+  // --- Recurring suggestions -----------------------------------------------------------
+
+  /** Pending occurrences of recurring rules in the visible days, per day column. */
+  protected readonly suggested = computed(() => {
+    const s = this.data.settings();
+    const days = this.days().map((d) => d.ms);
+    const tree = this.data.tree();
+    const list = suggestions(s.recurring ?? [], days, {
+      entries: this.data.entries(),
+      skipped: new Set(s.recurringSkipped ?? []),
+      absences: new Map((s.absences ?? []).map((a) => [a.date, a])),
+      lockEnd: this.lockEndMs(),
+      usable: (id) => {
+        const n = tree.get(id);
+        return !!n && !n.archived && !tree.hasArchivedAncestor(id);
+      },
+    });
+    const entries = this.data.entries();
+    const now = this.timer.minute();
+    return days.map((day, i) => {
+      const next = i + 1 < days.length ? days[i + 1] : addDays(day, 1);
+      return list
+        .filter((x) => x.start >= day && x.start < next)
+        .map((x) => {
+          const topMin = wallClockMinutes(x.start);
+          // Under another entry it would be unreachable: then only the day header lists it.
+          const hidden = entries.some((e) => e.start < x.end && (e.end ?? now) > x.start);
+          return { s: x, topMin, hidden, heightMin: Math.max(15, Math.min(MINUTES_PER_DAY - topMin, (x.end - x.start) / MS_PER_MINUTE)) };
+        });
+    });
+  });
+  private readonly allSuggested = computed(() =>
+    this.suggested()
+      .flat()
+      .map((g) => g.s),
+  );
+
+  protected suggestionName(x: Suggestion): string {
+    return this.data.tree().get(x.nodeId)?.name ?? '?';
+  }
+  protected suggestionLabel(x: Suggestion): string {
+    return `Suggested: ${this.suggestionName(x)}, ${formatRange(x.start, x.end)}`;
+  }
+
+  protected openDaySuggestions(button: HTMLElement, dayIdx: number): void {
+    const r = button.getBoundingClientRect();
+    this.openMenu({ x: r.left, y: r.bottom + 4, daySuggestions: dayIdx });
+  }
+
+  protected onSuggestionClick(ev: MouseEvent, x: Suggestion): void {
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.openMenu({ x: ev.clientX, y: ev.clientY, suggestion: x });
+  }
+
+  private async acceptSuggestions(list: Suggestion[]): Promise<void> {
+    if (!list.length) return;
+    try {
+      const ids = await this.data.addEntries(list.map(({ nodeId, start, end, note, tags }) => ({ nodeId, start, end, note, tags })));
+      const what = list.length === 1 ? (this.data.tree().get(list[0].nodeId)?.name ?? 'entry') : `${list.length} suggested entries`;
+      this.toast.show(`Added ${what}`, { action: { label: 'Undo', run: () => this.data.deleteEntries(ids) } });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  private async skipSuggestion(x: Suggestion): Promise<void> {
+    const before = await this.data.skipSuggestions([x.key]);
+    this.toast.show('Skipped this time', { action: { label: 'Undo', run: () => this.data.updateSettings({ recurringSkipped: before }) } });
+  }
+
+  private async stopRepeating(ruleId: string): Promise<void> {
+    const before = await this.data.deleteRecurring(ruleId);
+    this.toast.show('Stopped repeating', {
+      action: { label: 'Undo', run: () => this.data.updateSettings({ recurring: before.length ? before : undefined }) },
+    });
+  }
+
+  private async repeat(e: TimeEntry, weekdays: number[]): Promise<void> {
+    const rule = ruleFromEntry(e, weekdays, uid());
+    await this.data.saveRecurring(rule);
+    const at = formatClock(e.start);
+    this.toast.show(`Repeats ${weekdaysLabel(rule.weekdays, this.weekStartsOn())} at ${at}; it shows as suggestions to confirm`, {
+      action: { label: 'Undo', run: () => this.data.deleteRecurring(rule.id) },
+    });
+  }
+
+  /** Worked / target hours and absences per visible day (empty while working time is off). */
+  protected readonly dayWork = computed(() => (this.workTime.work() ? this.workTime.daysInfo(this.days().map((d) => d.ms)) : []));
+
+  protected absenceLabel(a: Absence): string {
+    const kind = ABSENCE_KINDS.find((k) => k.id === a.kind)?.label ?? a.kind;
+    return a.half ? `${kind} (½)` : kind;
+  }
+
   // --- Drag state ------------------------------------------------------------
   private drag: DragState | null = null;
   private rafId = 0;
@@ -147,6 +279,10 @@ export class ScheduleComponent {
   protected readonly menu = signal<MenuState | null>(null);
   protected readonly clipboard = signal<TimeEntry | null>(null);
   protected readonly editor = signal<EntryDraft | null>(null);
+  protected readonly editorLocked = computed(() => {
+    const d = this.editor();
+    return !!d?.id && isLocked(d.start, this.lockEndMs());
+  });
 
   protected readonly columns = computed<DaySegment[][]>(() => {
     const p = this.preview();
@@ -187,10 +323,33 @@ export class ScheduleComponent {
   }
 
   constructor() {
-    // Start scrolled to an hour before now (or 7:00) instead of midnight.
+    // Jump to a search result's days (when opened with ?at=…).
+    effect(() => {
+      const at = Number(this.at());
+      if (this.at() && Number.isFinite(at)) {
+        const view = untracked(() => this.view());
+        this.rangeStart.set(
+          alignStart(
+            view,
+            at,
+            untracked(() => this.weekStartsOn()),
+          ),
+        );
+      }
+    });
+    // Start scrolled to the found entry, else an hour before now (or 7:00) instead of midnight.
     afterNextRender(() => {
-      const hour = Math.max(0, Math.min(new Date().getHours() - 1, 7));
+      const at = Number(this.at());
+      const hour =
+        this.at() && Number.isFinite(at) ? Math.max(0, new Date(at).getHours() - 1) : Math.max(0, Math.min(new Date().getHours() - 1, 7));
       this.scroller()?.nativeElement.scrollTo?.({ top: hour * HOUR_HEIGHT_PX });
+    });
+    // Focus the found entry once it is rendered.
+    afterRenderEffect(() => {
+      const id = this.found();
+      if (!id || this.columns().length === 0) return;
+      const el = (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(id)}"]`);
+      if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
     });
     inject(DestroyRef).onDestroy(() => this.endDrag());
   }
@@ -273,6 +432,7 @@ export class ScheduleComponent {
     // A new gesture: forget a click suppression left over from a drag that ended elsewhere.
     this.suppressClick = false;
     if (seg.entry.end == null) return; // running timers are not draggable
+    if (this.isEntryLocked(seg.entry)) return; // locked: click opens it read-only
     ev.preventDefault();
     const target = ev.currentTarget as HTMLElement;
     const col = target.closest('.sched__col') as HTMLElement | null;
@@ -414,7 +574,8 @@ export class ScheduleComponent {
       this.openMenu({ x: r.left, y: r.top, entry: seg.entry });
     } else if (ev.key === 'Delete' || ev.key === 'Backspace') {
       ev.preventDefault();
-      if (this.isSelected(seg.entry.id)) void this.deleteSelection();
+      if (this.isEntryLocked(seg.entry)) this.lockedHint();
+      else if (this.isSelected(seg.entry.id)) void this.deleteSelection();
       else if (seg.entry.end != null) void this.deleteEntry(seg.entry.id);
     }
   }
@@ -438,7 +599,7 @@ export class ScheduleComponent {
   }
 
   protected onColLongPress(ev: LongPressEvent, dayStart: number, col: HTMLElement): void {
-    if ((ev.target as HTMLElement | null)?.closest?.('.block')) return;
+    if ((ev.target as HTMLElement | null)?.closest?.('.block, .suggest')) return;
     this.openMenu({ x: ev.x, y: ev.y, dayStart, minutes: this.minutesAt(ev.y, col) });
   }
 
@@ -446,6 +607,13 @@ export class ScheduleComponent {
     if ('entry' in m) {
       const e = m.entry;
       if (e.end == null) return [{ label: 'Stop timer', run: () => this.timer.stop() }];
+      if (this.isEntryLocked(e)) {
+        return [
+          { label: 'View…', run: () => this.openEditor(e) },
+          { label: 'Copy', run: () => this.clipboard.set({ ...e }) },
+          { label: '🔒 Locked period', disabled: true, run: () => undefined },
+        ];
+      }
       const splitAt = m.at != null && m.at > e.start && m.at < e.end ? m.at : null;
       const half = midpoint(e);
       const { prev, next } = mergeNeighbors(this.data.entries(), e);
@@ -456,19 +624,63 @@ export class ScheduleComponent {
       ];
       if (splitAt != null) items.push({ label: `Split at ${formatClock(splitAt)}`, run: () => this.split(e, splitAt) });
       else if (half != null) items.push({ label: 'Split in half', run: () => this.split(e, half) });
-      if (prev) items.push({ label: 'Merge with previous', run: () => this.merge([prev.id, e.id]) });
+      if (prev && !this.isEntryLocked(prev)) items.push({ label: 'Merge with previous', run: () => this.merge([prev.id, e.id]) });
       if (next) items.push({ label: 'Merge with next', run: () => this.merge([e.id, next.id]) });
+      const weekday = new Date(e.start).getDay();
+      items.push({ label: `Repeat every ${WEEKDAY_NAMES[weekday]}`, run: () => this.repeat(e, [weekday]) });
+      if (WORKDAYS.includes(weekday)) items.push({ label: 'Repeat every weekday (Mon–Fri)', run: () => this.repeat(e, WORKDAYS) });
       items.push(
         { label: this.isSelected(e.id) ? 'Deselect' : 'Select', run: () => this.toggleSelected(e) },
         { label: 'Delete', danger: true, run: () => this.deleteEntry(e.id) },
       );
       return items;
     }
+    if ('page' in m) {
+      const days = VIEW_DAYS[this.view()];
+      const from = this.rangeStart();
+      const pending = this.allSuggested();
+      return [
+        { label: 'Copy from last week', run: () => this.copyRange(addDays(from, -7), addDays(from, days - 7), 7, 'from last week') },
+        {
+          label: pending.length ? `Add all suggestions (${pending.length})` : 'Add all suggestions',
+          disabled: !pending.length,
+          run: () => this.acceptSuggestions(pending),
+        },
+      ];
+    }
+    if ('daySuggestions' in m) {
+      const list = (this.suggested()[m.daySuggestions] ?? []).map((g) => g.s);
+      const items: MenuItem[] = list.map((x) => ({
+        label: `Add ${this.suggestionName(x)} ${formatRange(x.start, x.end)}`,
+        run: () => this.acceptSuggestions([x]),
+      }));
+      if (list.length > 1) items.push({ label: `Add all (${list.length})`, run: () => this.acceptSuggestions(list) });
+      items.push({
+        label: list.length > 1 ? `Skip all (${list.length})` : 'Skip',
+        run: async () => {
+          const before = await this.data.skipSuggestions(list.map((x) => x.key));
+          this.toast.show('Skipped', { action: { label: 'Undo', run: () => this.data.updateSettings({ recurringSkipped: before }) } });
+        },
+      });
+      return items;
+    }
+    if ('suggestion' in m) {
+      const x = m.suggestion;
+      return [
+        { label: 'Add', run: () => this.acceptSuggestions([x]) },
+        { label: 'Skip this time', run: () => this.skipSuggestion(x) },
+        { label: 'Stop repeating', danger: true, run: () => this.stopRepeating(x.ruleId) },
+      ];
+    }
     const at = atWallClockMinutes(m.dayStart, m.minutes);
     const cb = this.clipboard();
+    const nextDay = addDays(m.dayStart, 1);
+    const dayLocked = this.isDayLocked(m.dayStart);
     return [
-      { label: 'New entry here…', run: () => this.openEditor(null, at) },
-      { label: cb ? `Paste ${this.nodeName(cb)}` : 'Paste', disabled: !cb, run: () => cb && this.paste(cb, at) },
+      { label: dayLocked ? 'New entry here… (locked)' : 'New entry here…', disabled: dayLocked, run: () => this.openEditor(null, at) },
+      { label: cb ? `Paste ${this.nodeName(cb)}` : 'Paste', disabled: !cb || dayLocked, run: () => cb && this.paste(cb, at) },
+      { label: 'Copy this day to the next day', run: () => this.copyRange(m.dayStart, nextDay, 1, 'to the next day') },
+      { label: 'Copy this day to next week', run: () => this.copyRange(m.dayStart, nextDay, 7, 'to next week') },
     ];
   }
 
@@ -486,6 +698,35 @@ export class ScheduleComponent {
     const removed = await this.data.deleteEntry(id);
     this.editor.set(null);
     if (removed) this.toast.show('Entry deleted', { action: { label: 'Undo', run: () => this.data.restoreEntries([removed]) } });
+  }
+
+  // --- Copy days ------------------------------------------------------------------------
+
+  protected openPageMenu(button: HTMLElement): void {
+    const r = button.getBoundingClientRect();
+    this.openMenu({ x: r.right - 220, y: r.bottom + 4, page: true });
+  }
+
+  /** Copies the finished entries starting in [from, to) by `dayShift` days. */
+  private async copyRange(from: number, to: number, dayShift: number, what: string): Promise<void> {
+    const plan = planCopy(this.data.entries(), from, to, dayShift);
+    if (!plan.copies.length) {
+      this.toast.show(plan.duplicates ? `Nothing to copy ${what}: those entries are already there.` : `Nothing to copy ${what}.`);
+      return;
+    }
+    try {
+      const ids = await this.data.addEntries(plan.copies);
+      const n = ids.length;
+      const extra = [
+        plan.duplicates ? `${plan.duplicates} already there` : '',
+        plan.overlaps ? `${plan.overlaps} ${plan.overlaps === 1 ? 'overlaps' : 'overlap'} existing entries` : '',
+      ].filter(Boolean);
+      this.toast.show(`Copied ${n} ${n === 1 ? 'entry' : 'entries'} ${what}${extra.length ? ` (${extra.join(', ')})` : ''}`, {
+        action: { label: 'Undo', run: () => this.data.deleteEntries(ids) },
+      });
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : String(err));
+    }
   }
 
   // --- Split / merge -----------------------------------------------------------------
@@ -537,6 +778,10 @@ export class ScheduleComponent {
 
   protected toggleSelected(e: TimeEntry): void {
     if (e.end == null) return;
+    if (this.isEntryLocked(e)) {
+      this.lockedHint();
+      return;
+    }
     const next = new Set(this.selectedEntries().map((x) => x.id));
     if (!next.delete(e.id)) next.add(e.id);
     this.selected.set(next);
@@ -643,7 +888,11 @@ export class ScheduleComponent {
     if (!nodeId) return;
     ev.preventDefault();
     const start = atWallClockMinutes(dayStart, minutes);
-    await this.data.addEntry({ nodeId, start, end: start + MS_PER_HOUR });
+    try {
+      await this.data.addEntry({ nodeId, start, end: start + MS_PER_HOUR });
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : String(e));
+    }
   }
 
   protected isPreviewing(seg: DaySegment): boolean {

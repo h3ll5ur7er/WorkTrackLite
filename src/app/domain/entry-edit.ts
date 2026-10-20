@@ -86,3 +86,36 @@ export function shiftEntry(e: TimeEntry, dayShift: number, offsetMs: number): { 
 function unique<T>(xs: T[]): T[] {
   return [...new Set(xs)];
 }
+
+export interface CopyPlan {
+  /** New closed entries (without ids) to add. */
+  copies: (Pick<TimeEntry, 'nodeId' | 'start' | 'note' | 'tags' | 'billable'> & { end: number })[];
+  /** Copies left out because the exact same entry already exists there. */
+  duplicates: number;
+  /** Copies that overlap an existing entry (added anyway; the calendar marks them). */
+  overlaps: number;
+}
+
+/**
+ * Copies the closed entries starting in `[from, to)` by `dayShift` calendar
+ * days (wall-clock times kept across DST). Running timers are not copied.
+ */
+export function planCopy(all: readonly TimeEntry[], from: number, to: number, dayShift: number): CopyPlan {
+  const plan: CopyPlan = { copies: [], duplicates: 0, overlaps: 0 };
+  const closed = all.filter((e) => e.end != null);
+  for (const e of closed) {
+    if (e.start < from || e.start >= to) continue;
+    const { start, end } = shiftEntry(e, dayShift, 0);
+    if (closed.some((o) => o.nodeId === e.nodeId && o.start === start && o.end === end)) {
+      plan.duplicates++;
+      continue;
+    }
+    if (closed.some((o) => o.start < end && start < o.end!)) plan.overlaps++;
+    const copy: CopyPlan['copies'][number] = { nodeId: e.nodeId, start, end };
+    if (e.note) copy.note = e.note;
+    if (e.tags?.length) copy.tags = e.tags;
+    if (e.billable !== undefined) copy.billable = e.billable;
+    plan.copies.push(copy);
+  }
+  return plan;
+}

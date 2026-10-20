@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { BackupData, ParseResult, backupFileName, createBackup, parseBackup } from '../domain/backup';
 import { decryptBackup, encryptBackup, isEncryptedBackup } from '../domain/backup-crypto';
 import { downloadFile } from '../shared/download';
+import { BudgetAlertService } from './budget-alert.service';
 import { DataService } from './data.service';
 
 /** A password-protected file: call `unlock` with its text and the password. */
@@ -16,6 +17,7 @@ export interface LockedBackup {
 @Injectable({ providedIn: 'root' })
 export class BackupService {
   private readonly data = inject(DataService);
+  private readonly alerts = inject(BudgetAlertService);
 
   /** Downloads a backup; with a password it is encrypted (see domain/backup-crypto.ts). */
   async exportToFile(password?: string): Promise<void> {
@@ -46,6 +48,7 @@ export class BackupService {
 
   /** Replaces all local data with the backup. */
   async restore(data: BackupData): Promise<void> {
+    this.alerts.rebaseline(data);
     await this.data.replaceAll(data);
   }
 }

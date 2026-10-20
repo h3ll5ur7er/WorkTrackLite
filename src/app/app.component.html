@@ -17,6 +17,9 @@
     }
 
     <div class="app__tools">
+      @if (data.ready() && !empty()) {
+        <a class="btn" routerLink="/search" title="Search entries" aria-label="Search entries"><span aria-hidden="true">🔍</span></a>
+      }
       <app-command-palette />
       <button
         type="button"

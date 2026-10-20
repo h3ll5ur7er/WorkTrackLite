@@ -12,7 +12,8 @@
   margin-bottom: 16px;
 }
 .nd__title {
-  flex: 1;
+  /* Wraps the actions onto their own line before squeezing the title. */
+  flex: 1 1 280px;
   min-width: 0;
 }
 .nd__path {
@@ -180,4 +181,9 @@
     grid-column: 2;
     font-size: 0.75rem;
   }
+}
+
+.nd__fav--on {
+  color: var(--c-warn);
+  border-color: var(--c-warn);
 }

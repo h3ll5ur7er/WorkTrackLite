@@ -94,6 +94,15 @@ export class TreeIndex {
     return true;
   }
 
+  /** Whether time on this node counts as working time (own or inherited flag; default true). */
+  countsAsWork(id: string): boolean {
+    for (const nid of [id, ...this.ancestorIds(id)]) {
+      const w = this.byId.get(nid)?.work;
+      if (w !== undefined) return w;
+    }
+    return true;
+  }
+
   /** Names from the root down to the node itself. */
   pathNames(id: string): string[] {
     const cached = this.pathCache.get(id);

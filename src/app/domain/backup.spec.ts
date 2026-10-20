@@ -91,6 +91,58 @@ describe('backup', () => {
     expect(res.data.settings.tagColors).toEqual({ urgent: '#22c55e' });
   });
 
+  it('keeps working-time settings, absences and the work flag; drops invalid values', () => {
+    const b = valid() as unknown as { nodes: Record<string, unknown>[]; settings: Record<string, unknown> };
+    b.nodes[0]['work'] = false;
+    b.settings['workTime'] = { hours: [0, 8, 8, 8, 8, 8.5, 99], from: '2026-01-05', carrySeconds: -1800 };
+    b.settings['absences'] = [
+      { date: '2026-02-03', kind: 'sick', half: true },
+      { date: '2026-01-02', kind: 'vacation' },
+      { date: '2026-01-02', kind: 'holiday' }, // same day twice: last one wins
+      { date: '2026-02-30', kind: 'vacation' },
+      { date: '2026-03-01', kind: 'party' },
+    ];
+    const res = parse(b);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.nodes[0].work).toBe(false);
+    expect(res.data.settings.workTime).toEqual({ hours: [0, 8, 8, 8, 8, 8.5, 0], from: '2026-01-05', carrySeconds: -1800 });
+    expect(res.data.settings.absences).toEqual([
+      { date: '2026-01-02', kind: 'holiday' },
+      { date: '2026-02-03', kind: 'sick', half: true },
+    ]);
+    const bad = parse({ ...b, settings: { ...b.settings, workTime: { hours: [8], from: 'soon' } } });
+    expect(bad.ok && bad.data.settings.workTime).toBeUndefined();
+  });
+
+  it('keeps valid recurring rules and skipped keys', () => {
+    const b = valid() as unknown as { settings: Record<string, unknown> };
+    b.settings['recurring'] = [
+      { id: 'r', nodeId: 'b', weekdays: [5, 1, 1, 9], startMinutes: 540, minutes: 15, from: '2026-10-01', note: 'standup', paused: true },
+      { id: 'bad', nodeId: 'b', weekdays: [], startMinutes: 540, minutes: 15, from: '2026-10-01' },
+      { id: 'bad2', nodeId: 'b', weekdays: [1], startMinutes: 2000, minutes: 15, from: '2026-10-01' },
+    ];
+    b.settings['recurringSkipped'] = ['r@2026-10-02', 42, 'nonsense'];
+    const res = parse(b);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.settings.recurring).toEqual([
+      { id: 'r', nodeId: 'b', weekdays: [1, 5], startMinutes: 540, minutes: 15, from: '2026-10-01', note: 'standup', paused: true },
+    ]);
+    expect(res.data.settings.recurringSkipped).toEqual(['r@2026-10-02']);
+  });
+
+  it('keeps favourites; anything but true is dropped', () => {
+    const b = valid();
+    b.nodes[0].favorite = true;
+    (b.nodes[1] as unknown as Record<string, unknown>)['favorite'] = 'yes';
+    const res = parse(b);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.data.nodes[0].favorite).toBe(true);
+    expect(res.data.nodes[1].favorite).toBeUndefined();
+  });
+
   it('keeps billing fields and drops invalid ones', () => {
     const b = valid();
     b.nodes[0].rate = 120;

@@ -125,3 +125,9 @@ h1 {
   font-size: 0.8rem;
   margin: 8px 0 0;
 }
+
+@media (max-width: 720px) {
+  .rep__table td:first-child {
+    min-width: 9rem;
+  }
+}

@@ -109,6 +109,18 @@ describe('DataService', () => {
     expect((await db.settings.get('app'))?.tagColors).toEqual({ a: '#ef4444', c: '#3b82f6' });
   });
 
+  it('absences: adding replaces the same day, removing and undo restore the list', async () => {
+    await data.changeAbsences([
+      { date: '2026-10-20', kind: 'vacation' },
+      { date: '2026-10-19', kind: 'vacation' },
+    ]);
+    const before = await data.changeAbsences([{ date: '2026-10-20', kind: 'sick', half: true }], ['2026-10-19']);
+    expect(before.map((a) => a.date)).toEqual(['2026-10-19', '2026-10-20']);
+    expect((await db.settings.get('app'))?.absences).toEqual([{ date: '2026-10-20', kind: 'sick', half: true }]);
+    await data.updateSettings({ absences: before });
+    expect((await db.settings.get('app'))?.absences).toHaveLength(2);
+  });
+
   it('snapshot → replaceAll restores the same data', async () => {
     const a = await data.addNode({ parentId: null, name: 'A', kind: 'K', tags: ['t'] });
     await data.addEntry({ nodeId: a, start: 0, end: 1000, note: 'n' });
@@ -125,6 +137,59 @@ describe('DataService', () => {
     const b = await data.addNode({ parentId: a, name: 'B', kind: 'K' });
     await data.addEntry({ nodeId: b, start: 0, end: 60_000 });
     await waitFor(() => data.closedSubtreeSeconds().get(a) === 60);
+  });
+
+  describe('locked period', () => {
+    const H = 3_600_000;
+    const sep = (d: number, h = 9) => new Date(2026, 8, d, h).getTime();
+    const oct = (d: number, h = 9) => new Date(2026, 9, d, h).getTime();
+
+    beforeEach(async () => {
+      await db.entries.bulkAdd([
+        makeEntry({ id: 'old', nodeId: 'n', start: sep(30, 22), end: oct(1, 1) }), // crosses the lock end
+        makeEntry({ id: 'new', nodeId: 'n', start: oct(2), end: oct(2) + H }),
+      ]);
+      await data.setLockedUntil('2026-09-30', oct(15));
+    });
+
+    it('refuses every change that touches a locked entry or creates one', async () => {
+      const locked = /are locked/;
+      await expect(data.updateEntry('old', { note: 'x' })).rejects.toThrow(locked);
+      await expect(data.updateEntry('new', { start: sep(29), end: sep(29) + H })).rejects.toThrow(locked);
+      await expect(data.deleteEntry('old')).rejects.toThrow(locked);
+      await expect(data.addEntry({ nodeId: 'n', start: sep(1), end: sep(1) + H })).rejects.toThrow(locked);
+      await expect(
+        data.addEntries([
+          { nodeId: 'n', start: oct(3), end: oct(3) + H },
+          { nodeId: 'n', start: sep(3), end: sep(3) + H },
+        ]),
+      ).rejects.toThrow(locked);
+      await expect(data.splitEntry('old', oct(1, 0))).rejects.toThrow(locked);
+      await expect(data.deleteEntries(['new', 'old'])).rejects.toThrow(locked);
+      await expect(data.updateEntries(['new', 'old'], () => ({ nodeId: 'm' }))).rejects.toThrow(locked);
+      await expect(data.restoreEntries([makeEntry({ id: 'back', nodeId: 'n', start: sep(5) })])).rejects.toThrow(locked);
+      await expect(data.deleteNodeCascade('n')).rejects.toThrow(/Archive the node instead/);
+      // Nothing changed.
+      expect((await db.entries.toArray()).map((e) => [e.id, e.note, e.nodeId])).toEqual([
+        ['new', undefined, 'n'],
+        ['old', undefined, 'n'],
+      ]);
+    });
+
+    it('allows changes after the period, and everything once unlocked', async () => {
+      await data.updateEntry('new', { note: 'fine' });
+      await data.addEntry({ nodeId: 'n', start: oct(1, 9), end: oct(1, 10) });
+      expect(await data.setLockedUntil(undefined)).toBe('2026-09-30');
+      await data.updateEntry('old', { note: 'now ok' });
+      expect((await db.entries.get('old'))?.note).toBe('now ok');
+    });
+
+    it('cannot lock today or a period with a running timer in it', async () => {
+      await expect(data.setLockedUntil('2026-10-15', oct(15, 12))).rejects.toThrow('before today');
+      await db.entries.add(makeEntry({ id: 'run', nodeId: 'n', start: oct(10), end: null }));
+      await expect(data.setLockedUntil('2026-10-12', oct(15, 12))).rejects.toThrow('running timer');
+      expect((await db.settings.get('app'))?.lockedUntil).toBe('2026-09-30');
+    });
   });
 
   describe('split, merge and bulk edits', () => {
@@ -177,6 +242,22 @@ describe('DataService', () => {
       await expect(data.updateEntries(['a', 'b'], (e) => (e.id === 'b' ? { end: e.start } : { nodeId: 'm' }))).rejects.toThrow();
       expect((await db.entries.toArray()).map((e) => e.nodeId)).toEqual(['n', 'n']);
       await expect(data.updateEntries(['a', 'gone'], () => ({ nodeId: 'm' }))).rejects.toThrow('no longer exist');
+    });
+
+    it('adds several entries at once, or none if one is invalid', async () => {
+      const ids = await data.addEntries([
+        { nodeId: 'n', start: T, end: T + H },
+        { nodeId: 'n', start: T + H, end: T + 2 * H, note: 'b' },
+      ]);
+      expect(ids).toHaveLength(2);
+      expect((await db.entries.get(ids[1]))?.note).toBe('b');
+      await expect(
+        data.addEntries([
+          { nodeId: 'n', start: T, end: T + H },
+          { nodeId: 'n', start: T, end: T },
+        ]),
+      ).rejects.toThrow();
+      expect(await db.entries.count()).toBe(2);
     });
 
     it('deletes several entries', async () => {

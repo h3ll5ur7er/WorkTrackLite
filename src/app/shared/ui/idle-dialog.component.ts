@@ -65,6 +65,9 @@ import { fromLocalInput, isSameDay, toLocalInput } from '../../domain/time';
     }
     .idle__panel {
       width: min(480px, 100%);
+      max-height: calc(100vh - 32px);
+      max-height: calc(100dvh - 32px);
+      overflow-y: auto;
       background: var(--c-bg-2);
       border: 1px solid var(--c-border);
       border-left: 3px solid var(--c-warn);

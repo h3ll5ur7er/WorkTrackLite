@@ -38,9 +38,62 @@
   `.encrypted.json`). Restoring one, in Settings or on the first-run screen, asks
   for the password; a wrong password changes nothing. Works offline in the
   single-file build too.
+- Favourites and quick start: star a node (card menu or Manage) to pin it;
+  the dashboard's quick-start row shows favourites and the five most recently
+  used nodes for one-tap start/stop. Favourites sort first on the dashboard
+  and in the command palette. Included in backups.
+- Notes and tags on the running timer: the timer bar shows the note and tags
+  of the running entry; click it to edit them without stopping the timer
+  (Enter saves, Escape cancels).
+- Budget alerts: a toast (with "Open") when a node reaches its warning
+  threshold or goes over its budget or target, also while a timer runs; each
+  crossing is announced once per browser, and limits already crossed when you
+  update are not announced. Optional system notifications (Settings → Budget
+  alerts) for when the app is in the background.
+- Copy days in the schedule: "⋯ → Copy from last week" fills the visible
+  days with last week's entries; a day's menu copies it to the next day or to
+  next week. Wall-clock times are kept across DST, exact duplicates are
+  skipped (so repeating it adds nothing), overlaps are reported, and Undo
+  removes the copies.
+- Working time and overtime: set target hours per weekday, a start date and a
+  starting balance (Settings → Working time). The dashboard shows today, this
+  week and the overtime balance (up to yesterday); schedule day headers show
+  worked/target hours. Absences (vacation, sick, public holiday, other; full
+  or half day; ranges skip days off) credit their hours. Nodes can be
+  excluded from working time (inherited, e.g. a "Personal" branch).
+- Lock a period (Settings → Locked period, e.g. after invoicing): entries
+  starting on or before the chosen day cannot be added, changed, moved, split,
+  merged or deleted, and a node with locked entries cannot be deleted (archive
+  it instead). Locked days are hatched in the schedule and their entries open
+  read-only. Only past days can be locked, and not under a running timer;
+  unlocking is one click.
+- Recurring entries: right-click an entry → "Repeat every Tuesday" / "Repeat
+  every weekday", or add one in Settings → Recurring entries. Occurrences show
+  as dashed suggestions in the schedule (and as "N suggested" in the day
+  header): Add, Skip this time, or Stop repeating; "⋯ → Add all suggestions"
+  confirms the visible days at once. Nothing is created without a click;
+  occurrences already covered by an entry on that node, on full-day absences
+  or in a locked period are not suggested. Rules can be paused.
+- Search all entries (🔍 in the header, or type in the command palette and pick
+  "Search entries for …"): every word must appear in the note, tags or node
+  path; accents are ignored and `#tag` matches tags by prefix. Results show
+  highlights and a total, export to CSV, and open the schedule at that entry.
 
 ### Fixed
 
+- Restoring a backup no longer announces budget overruns the backup already
+  contains.
+- Lists that overflowed could hide entries: the Manage tree was clipped by
+  its sidebar (desktop and phone) instead of scrolling. Long context menus now
+  scroll and are placed by their real size, the idle dialog scrolls on small
+  screens, and wide tables (reports, node entries) scroll sideways instead of
+  crushing their columns.
+- Toasts no longer cover a dialog's or menu's buttons: while one is open they
+  move to the top of the screen.
+- Phones: the node header no longer squeezes the breadcrumb to one word per
+  line; the Manage tree folds away while a node is open ("All nodes" toggles
+  it); context menus open as a bottom sheet with larger touch targets.
+- Calendar blocks show their full label as a tooltip when it is truncated.
 - Keys pressed right after opening a context menu or the entry editor could be
   lost: both now render and take focus inside the triggering event (as the
   command palette already did since 0.2.0), via `shared/render-now.ts`.

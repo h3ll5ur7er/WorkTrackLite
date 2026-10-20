@@ -19,6 +19,16 @@
       } @else if (!n.archived) {
         <button type="button" class="btn btn--primary" (click)="startTimer()">▶ Start</button>
       }
+      <button
+        type="button"
+        class="btn"
+        [class.nd__fav--on]="n.favorite"
+        [attr.aria-pressed]="!!n.favorite"
+        (click)="toggleFavorite()"
+        title="Favourites appear in the dashboard's quick-start row"
+      >
+        <span aria-hidden="true">{{ n.favorite ? '★' : '☆' }}</span> Favourite
+      </button>
       <button type="button" class="btn" (click)="exportCsv('node')">CSV (this)</button>
       @if (hasChildren()) {
         <button type="button" class="btn" (click)="exportCsv('subtree')">CSV (subtree)</button>
@@ -148,6 +158,16 @@
         <span>Kind</span>
         <input [value]="n.kind" (change)="setKind($any($event.target).value)" />
       </label>
+      @if (workTimeOn()) {
+        <label class="field">
+          <span>Working time</span>
+          <select (change)="setWork($any($event.target).value)">
+            <option value="" [selected]="n.work === undefined">Inherit ({{ inheritedWork() ? 'counts' : 'does not count' }})</option>
+            <option value="yes" [selected]="n.work === true">Counts as working time</option>
+            <option value="no" [selected]="n.work === false">Does not count (e.g. personal)</option>
+          </select>
+        </label>
+      }
       <label class="field">
         <span>Tags (comma separated)</span>
         <input [value]="(n.tags ?? []).join(', ')" (change)="setTags($any($event.target).value)" />
@@ -213,42 +233,50 @@
       <button type="button" class="btn" (click)="newEntry()">+ Log time</button>
     </div>
     @if (ownEntries().length) {
-      <table class="entries">
-        <thead>
-          <tr>
-            <th scope="col">Start</th>
-            <th scope="col">End</th>
-            <th scope="col">Duration</th>
-            <th scope="col">Note</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (e of ownEntries(); track e.id) {
+      <div class="table-scroll">
+        <table class="entries">
+          <thead>
             <tr>
-              <td>{{ e.start | date: 'short' }}</td>
-              <td>
-                @if (e.end !== null) {
-                  {{ e.end | date: 'short' }}
-                } @else {
-                  <em>running…</em>
-                }
-              </td>
-              <td class="entries__num">{{ formatHMS(entrySeconds(e)) }}</td>
-              <td>
-                {{ e.note }}
-                <app-tag-chips [tags]="e.tags" />
-              </td>
-              <td class="entries__actions">
-                @if (e.end !== null) {
-                  <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
-                }
-                <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
-              </td>
+              <th scope="col">Start</th>
+              <th scope="col">End</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Note</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @for (e of ownEntries(); track e.id) {
+              <tr>
+                <td>{{ e.start | date: 'short' }}</td>
+                <td>
+                  @if (e.end !== null) {
+                    {{ e.end | date: 'short' }}
+                  } @else {
+                    <em>running…</em>
+                  }
+                </td>
+                <td class="entries__num">{{ formatHMS(entrySeconds(e)) }}</td>
+                <td>
+                  {{ e.note }}
+                  <app-tag-chips [tags]="e.tags" />
+                </td>
+                <td class="entries__actions">
+                  @if (isEntryLocked(e)) {
+                    <span title="Locked period: unlock it in Settings to change this entry"
+                      ><span aria-hidden="true">🔒</span><span class="visually-hidden">Locked</span></span
+                    >
+                  } @else {
+                    @if (e.end !== null) {
+                      <button type="button" class="btn btn--ghost btn--small" (click)="editEntry(e)" aria-label="Edit entry">✎</button>
+                    }
+                    <button type="button" class="btn btn--ghost btn--small" (click)="deleteEntry(e.id)" aria-label="Delete entry">×</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     } @else {
       <p class="muted">No entries yet — start the timer or log time manually.</p>
     }

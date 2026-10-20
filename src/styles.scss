@@ -14,6 +14,7 @@
   --c-accent-bg: rgba(90, 179, 255, 0.12);
   --c-on-accent: #0b1220;
   --c-warn: #ffb454;
+  --c-ok: #4ade80;
   --c-danger: #ff6b6b;
   --c-shadow: rgba(0, 0, 0, 0.45);
 }
@@ -28,6 +29,7 @@
   --c-accent-bg: rgba(16, 113, 229, 0.1);
   --c-on-accent: #ffffff;
   --c-warn: #9a6200;
+  --c-ok: #15803d;
   --c-danger: #c4373b;
   --c-shadow: rgba(0, 0, 0, 0.18);
 }
@@ -169,6 +171,21 @@ body {
   color: var(--c-fg-3);
 }
 
+/* Wide tables scroll sideways inside their panel instead of crushing columns. */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/*
+ * Toasts sit above everything, so while a dialog, menu, the palette or the note form is open
+ * they move to the top edge instead of covering its buttons.
+ */
+body:has(.modal, .ctx, .cp__panel, .idle, .rn) .toasts {
+  top: 12px;
+  bottom: auto;
+}
+
 /* --- Context menus (dashboard, schedule) ------------------------------- */
 
 .ctx {
@@ -179,6 +196,11 @@ body {
 .ctx__menu {
   position: fixed;
   min-width: 170px;
+  /* Long menus scroll instead of running off the screen (placement: ContextMenuComponent). */
+  max-height: calc(100vh - 8px);
+  max-height: calc(100dvh - 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 4px 0;
   list-style: none;
@@ -209,6 +231,21 @@ body {
 }
 .ctx__menu .ctx__danger {
   color: var(--c-danger);
+}
+/* Phones: a bottom sheet with thumb-sized items rather than a tiny popup. */
+@media (max-width: 720px) {
+  .ctx__menu {
+    left: 8px !important;
+    right: 8px;
+    top: auto !important;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    max-height: 70vh;
+    max-height: 70dvh;
+    border-radius: 12px;
+  }
+  .ctx__menu button {
+    padding: 12px 16px;
+  }
 }
 
 /* File inputs wrapped in a label styled as a button. */

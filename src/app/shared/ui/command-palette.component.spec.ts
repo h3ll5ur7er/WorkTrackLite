@@ -41,8 +41,10 @@ describe('CommandPaletteComponent', () => {
     input.dispatchEvent(new Event('input'));
     await fixture.whenStable();
     const options = [...el.querySelectorAll('[role=option]')].map((o) => o.textContent?.trim());
-    expect(options).toHaveLength(1);
+    // The match, then the full-text search for what was typed.
+    expect(options).toHaveLength(2);
     expect(options[0]).toContain('Open Acme / Website');
+    expect(options[1]).toContain('Search entries for “open web”');
 
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await fixture.whenStable();

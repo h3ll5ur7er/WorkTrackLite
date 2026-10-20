@@ -68,7 +68,7 @@ describe('DashboardComponent', () => {
     el.querySelector<HTMLButtonElement>('button[aria-label="More actions for Website"]')!.click();
     await fixture.whenStable();
     const items = [...el.querySelectorAll('[role=menuitem]')].map((b) => b.textContent?.trim());
-    expect(items).toEqual(['Start timer', 'Log time…', 'Open in Manage', 'Hide from dashboard']);
+    expect(items).toEqual(['Start timer', 'Log time…', 'Add to favourites', 'Open in Manage', 'Hide from dashboard']);
   });
 
   // Keys pressed right after opening go to whatever is focused at that moment, which can be

@@ -22,6 +22,36 @@
     </div>
   }
 
+  <app-work-summary />
+
+  @if (quick().length) {
+    <section class="quick" aria-labelledby="quick-title">
+      <h2 id="quick-title" class="quick__title">Quick start</h2>
+      <ul class="quick__list">
+        @for (q of quick(); track q.node.id) {
+          <li>
+            <button
+              type="button"
+              class="quick__btn"
+              [class.quick__btn--running]="q.isRunning"
+              [style.--node-color]="q.color"
+              [attr.aria-pressed]="q.isRunning"
+              [attr.aria-label]="q.node.name + (q.favorite ? ' (favourite)' : '')"
+              [title]="q.path ? q.path + ' › ' + q.node.name : q.node.name"
+              (click)="toggleNode(q.node)"
+            >
+              <span class="quick__icon" aria-hidden="true">{{ q.isRunning ? '■' : q.favorite ? '★' : '▶' }}</span>
+              <span class="quick__name">{{ q.node.name }}</span>
+              @if (q.path) {
+                <span class="quick__path">{{ q.path }}</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
   <div class="dash__grid">
     @for (c of cards(); track c.node.id) {
       <article
@@ -57,6 +87,11 @@
           <h2 class="card__title">
             <span class="card__kind">{{ c.node.kind }}</span>
             {{ c.node.name }}
+            @if (c.node.favorite) {
+              <span class="card__fav" title="Favourite"
+                ><span aria-hidden="true">★</span><span class="visually-hidden">(favourite)</span></span
+              >
+            }
           </h2>
           @if (c.node.tags?.length) {
             <app-tag-chips [tags]="c.node.tags" />

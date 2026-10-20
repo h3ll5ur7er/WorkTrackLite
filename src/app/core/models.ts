@@ -38,6 +38,10 @@ export interface Node {
   rate?: number;
   /** Whether time here is billable (inherited; default true). */
   billable?: boolean;
+  /** Whether time here counts towards working hours (inherited; default true). */
+  work?: boolean;
+  /** Pinned to the dashboard's quick-start row and listed first. */
+  favorite?: boolean;
   /** Archived nodes are hidden from the dashboard, palette and pickers but keep their history. */
   archived?: boolean;
   /**
@@ -90,12 +94,62 @@ export interface Settings {
   idleAwayMinutes?: number;
   /** Ask once when a timer has run this long (hours, default 8). */
   idleLongRunningHours?: number;
+  /** Toast when a budget's warning threshold or limit is crossed (default on). */
+  budgetAlerts?: boolean;
+  /** Also show a system notification for budget alerts (needs browser permission). */
+  budgetNotifications?: boolean;
   /** Tag name → #rrggbb. */
   tagColors?: Record<string, string>;
+  /** Recurring entries, offered as suggestions in the schedule. */
+  recurring?: RecurringRule[];
+  /** Suggestions the user skipped: `${ruleId}@yyyy-mm-dd`. */
+  recurringSkipped?: string[];
+  /** Entries starting on or before this day (yyyy-mm-dd) are read-only (e.g. after invoicing). */
+  lockedUntil?: string;
+  /** Working hours and overtime balance; undefined = off. */
+  workTime?: WorkTime;
+  /** Days off; their target hours count as worked. */
+  absences?: Absence[];
   /** ISO 4217 code for amounts (default EUR). */
   currency?: string;
   /** Billing rounding per entry; minutes 0 = exact. */
   rounding?: Rounding;
+}
+
+export type AbsenceKind = 'vacation' | 'sick' | 'holiday' | 'other';
+
+/** A day (or half day) off; its target hours count as worked. */
+export interface Absence {
+  /** Local day, `yyyy-mm-dd`. */
+  date: string;
+  kind: AbsenceKind;
+  half?: boolean;
+}
+
+export interface WorkTime {
+  /** Target hours per weekday, indexed like `Date.getDay()` (0 = Sunday). */
+  hours: number[];
+  /** First day (`yyyy-mm-dd`) counted in the overtime balance. */
+  from: string;
+  /** Balance carried over from before `from`, in seconds (may be negative). */
+  carrySeconds?: number;
+}
+
+/** "Every Mon–Fri 09:00 for 15 min on Internal / Standup". */
+export interface RecurringRule {
+  id: string;
+  nodeId: string;
+  /** Weekdays like `Date.getDay()` (0 = Sunday). */
+  weekdays: number[];
+  /** Wall-clock start, minutes after midnight. */
+  startMinutes: number;
+  /** Duration in minutes. */
+  minutes: number;
+  note?: string;
+  tags?: string[];
+  /** First day (yyyy-mm-dd) with suggestions. */
+  from: string;
+  paused?: boolean;
 }
 
 export interface Rounding {

@@ -127,6 +127,49 @@
   gap: 6px;
 }
 
+.sched__suggested {
+  display: block;
+  margin: 2px auto 0;
+  padding: 0 6px;
+  border: 1px dashed var(--c-fg-3);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-fg-3);
+  font: inherit;
+  font-size: 0.65rem;
+  cursor: pointer;
+  &:hover,
+  &:focus-visible {
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+  }
+}
+
+.sched__lock {
+  font-size: 0.7rem;
+  margin-right: 2px;
+}
+.sched__col--locked {
+  background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(127, 127, 127, 0.14) 8px 10px);
+}
+
+.sched__day-work {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--c-fg-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sched__day-work--met {
+  color: var(--c-ok);
+}
+.sched__day-work--off {
+  color: var(--c-warn);
+}
+
 .sched__day-row {
   display: grid;
   grid-template-columns: 56px repeat(var(--days, 7), 1fr);
@@ -216,6 +259,45 @@
     background: var(--c-danger);
   }
 }
+/* A recurring entry's suggested occurrence: click to add, skip or stop. Real blocks sit above it. */
+.suggest {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 6px;
+  overflow: hidden;
+  padding: 0 6px;
+  line-height: 1.15;
+  border: 1.5px dashed var(--c-fg-3);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--c-fg-3);
+  font: inherit;
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  &:hover,
+  &:focus-visible {
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+    z-index: 3;
+  }
+}
+.suggest__title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.suggest__meta {
+  white-space: nowrap;
+}
+
 .sched__ghost {
   position: absolute;
   left: 2px;
@@ -272,6 +354,18 @@
   &--dragging {
     z-index: 4;
     box-shadow: 0 4px 16px var(--c-shadow);
+  }
+  &--found {
+    z-index: 3;
+    outline: 3px solid var(--c-warn);
+    outline-offset: 1px;
+  }
+  &--locked {
+    cursor: default;
+    opacity: 0.8;
+    .block__handle {
+      display: none;
+    }
   }
   &--selected {
     z-index: 3;
@@ -335,7 +429,9 @@
   }
   .sched__actions {
     flex: 1 0 100%;
-    justify-content: space-between;
+  }
+  .sched__view {
+    margin-right: auto;
   }
   .sched__long {
     display: none;

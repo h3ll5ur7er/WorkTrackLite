@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NAV_ITEMS } from './app.nav';
 import { DataService } from './core/data.service';
+import { BudgetAlertService } from './core/budget-alert.service';
 import { IdleService } from './core/idle.service';
 import { PresenceService } from './core/presence.service';
 import { ThemeService } from './core/theme.service';
@@ -33,6 +34,8 @@ export class AppComponent {
   // Instantiated here so the title/badge stay in sync on every page.
   private readonly presence = inject(PresenceService);
   protected readonly idle = inject(IdleService);
+  /** Starts watching budgets (toasts / notifications on crossing a limit). */
+  private readonly budgetAlerts = inject(BudgetAlertService);
   protected readonly nav = NAV_ITEMS;
   protected readonly empty = computed(() => this.data.nodes().length === 0);
 }

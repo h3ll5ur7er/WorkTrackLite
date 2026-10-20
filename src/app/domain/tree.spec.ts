@@ -137,4 +137,14 @@ describe('TreeIndex.colorOf', () => {
     expect(t.colorOf('d')).toBe('#22c55e');
     expect(t.colorOf('x')).toBeNull();
   });
+
+  it('countsAsWork inherits the nearest explicit flag, default true', () => {
+    const t = new TreeIndex([
+      makeNode({ id: 'personal', work: false }),
+      makeNode({ id: 'sport', parentId: 'personal' }),
+      makeNode({ id: 'course', parentId: 'personal', work: true }),
+      makeNode({ id: 'client' }),
+    ]);
+    expect(['personal', 'sport', 'course', 'client', 'missing'].map((id) => t.countsAsWork(id))).toEqual([false, false, true, true, true]);
+  });
 });

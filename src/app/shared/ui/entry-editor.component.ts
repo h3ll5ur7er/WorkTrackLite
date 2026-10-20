@@ -49,14 +49,17 @@ export function draftFields(d: EntryDraft): NewEntry {
         role="dialog"
         aria-modal="true"
         aria-labelledby="entry-editor-title"
-        (submit)="$event.preventDefault(); trySave()"
+        (submit)="$event.preventDefault(); readonly() || trySave()"
       >
         <header class="modal__header">
-          <h2 id="entry-editor-title">{{ form().id ? 'Edit time entry' : 'New time entry' }}</h2>
+          <h2 id="entry-editor-title">{{ readonly() ? 'Time entry (locked)' : form().id ? 'Edit time entry' : 'New time entry' }}</h2>
           <button type="button" class="btn btn--ghost btn--small" (click)="cancelled.emit()" aria-label="Close">×</button>
         </header>
 
-        <div class="modal__body">
+        <fieldset class="modal__body" [disabled]="readonly()">
+          @if (readonly()) {
+            <p class="modal__locked">🔒 This entry is in a locked period. Unlock the period in Settings to change it.</p>
+          }
           <label class="field">
             <span>Node</span>
             <select name="node" (change)="patch({ nodeId: $any($event.target).value || null })">
@@ -125,18 +128,23 @@ export function draftFields(d: EntryDraft): NewEntry {
             </select>
           </label>
 
-          @if (validationError(); as err) {
+          @if (!readonly() && validationError(); as err) {
             <p class="error" role="alert">{{ err }}</p>
           }
-        </div>
+        </fieldset>
 
         <footer class="modal__footer">
-          @if (form().id; as id) {
-            <button type="button" class="btn btn--ghost" (click)="deleted.emit(id)">Delete</button>
+          @if (readonly()) {
+            <span class="modal__spacer"></span>
+            <button type="button" class="btn btn--primary" (click)="cancelled.emit()">Close</button>
+          } @else {
+            @if (form().id; as id) {
+              <button type="button" class="btn btn--ghost" (click)="deleted.emit(id)">Delete</button>
+            }
+            <span class="modal__spacer"></span>
+            <button type="button" class="btn" (click)="cancelled.emit()">Cancel</button>
+            <button type="submit" class="btn btn--primary" [disabled]="!!validationError()">Save</button>
           }
-          <span class="modal__spacer"></span>
-          <button type="button" class="btn" (click)="cancelled.emit()">Cancel</button>
-          <button type="submit" class="btn btn--primary" [disabled]="!!validationError()">Save</button>
         </footer>
       </form>
     </div>
@@ -169,6 +177,7 @@ export function draftFields(d: EntryDraft): NewEntry {
       display: flex;
       flex-direction: column;
       max-height: 90vh;
+      max-height: calc(100dvh - 32px);
     }
     .modal__header {
       display: flex;
@@ -201,6 +210,15 @@ export function draftFields(d: EntryDraft): NewEntry {
       flex: 0 0 140px !important;
       min-width: 0 !important;
     }
+    fieldset.modal__body {
+      border: 0;
+      margin: 0;
+      min-width: 0;
+    }
+    .modal__locked {
+      margin: 0;
+      color: var(--c-warn);
+    }
     .modal__readout {
       align-self: flex-end;
       padding: 6px 8px;
@@ -225,6 +243,8 @@ export class EntryEditorComponent implements AfterViewInit {
   private readonly host = inject(ElementRef<HTMLElement>);
 
   readonly draft = input.required<EntryDraft>();
+  /** Show the entry without letting it change (locked period). */
+  readonly readonly = input(false);
   readonly saved = output<EntryDraft>();
   readonly cancelled = output<void>();
   readonly deleted = output<string>();
@@ -235,7 +255,10 @@ export class EntryEditorComponent implements AfterViewInit {
 
   /** Focus as soon as the view exists; openers render synchronously (see `renderNow`). */
   ngAfterViewInit(): void {
-    (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('select, input')?.focus();
+    // A read-only (disabled) form has nothing to type into: focus Close instead.
+    (this.host.nativeElement as HTMLElement)
+      .querySelector<HTMLElement>('select:enabled, input:enabled, .modal__footer .btn--primary')
+      ?.focus();
   }
 
   protected readonly nodeOptions = computed(() => {

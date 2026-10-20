@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { DataService } from '../../core/data.service';
 import { NodeDetailComponent } from './node-detail.component';
@@ -10,12 +10,27 @@ import { TreeComponent } from './tree.component';
   imports: [TreeComponent, NodeDetailComponent],
   template: `
     <div class="manage">
-      <aside class="manage__sidebar" aria-label="Hierarchy">
-        <button type="button" class="btn btn--primary" [attr.aria-expanded]="showAddRoot()" (click)="showAddRoot.set(!showAddRoot())">
+      <aside class="manage__sidebar" [class.manage__sidebar--collapsed]="treeCollapsed()" aria-label="Hierarchy">
+        <!-- Phones only: the tree folds away once a node is open, so its details get the screen. -->
+        <button
+          type="button"
+          class="btn manage__toggle"
+          aria-controls="manage-tree"
+          [attr.aria-expanded]="!treeCollapsed()"
+          (click)="treeCollapsed.set(!treeCollapsed())"
+        >
+          <span aria-hidden="true">{{ treeCollapsed() ? '▸' : '▾' }}</span> All nodes ({{ nodeCount() }})
+        </button>
+        <button
+          type="button"
+          class="btn btn--primary manage__add"
+          [attr.aria-expanded]="showAddRoot()"
+          (click)="showAddRoot.set(!showAddRoot())"
+        >
           + New top-level
         </button>
         @if (showAddRoot()) {
-          <form class="row" (submit)="$event.preventDefault(); addRoot()">
+          <form class="row manage__add" (submit)="$event.preventDefault(); addRoot()">
             <input aria-label="Name" placeholder="Name" [value]="newRootName()" (input)="newRootName.set($any($event.target).value)" />
             <input
               aria-label="Kind"
@@ -26,7 +41,7 @@ import { TreeComponent } from './tree.component';
             <button type="submit" class="btn" [disabled]="!newRootName().trim()">Add</button>
           </form>
         }
-        <app-tree [selectedId]="nodeId() ?? null" />
+        <app-tree id="manage-tree" [selectedId]="nodeId() ?? null" />
       </aside>
       <section class="manage__content">
         <app-node-detail [node]="selected()" />
@@ -58,15 +73,29 @@ import { TreeComponent } from './tree.component';
       padding: 16px 20px 32px;
       overflow: auto;
     }
+    .manage__toggle {
+      display: none;
+    }
     @media (max-width: 720px) {
       .manage {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
       }
       .manage__sidebar {
-        max-height: 40vh;
+        max-height: 50vh;
         border-right: 0;
         border-bottom: 1px solid var(--c-border);
+      }
+      .manage__toggle {
+        display: block;
+        text-align: left;
+      }
+      .manage__sidebar--collapsed app-tree,
+      .manage__sidebar--collapsed .manage__add {
+        display: none;
+      }
+      .manage__content {
+        padding: 12px 14px 24px;
       }
     }
   `,
@@ -81,6 +110,9 @@ export class ManageComponent {
 
   protected readonly selected = computed(() => this.data.tree().get(this.nodeId()) ?? null);
   protected readonly showAddRoot = signal(false);
+  protected readonly nodeCount = computed(() => this.data.nodes().length);
+  /** Phones: folded while a node is open; opening another node folds it again. */
+  protected readonly treeCollapsed = linkedSignal(() => !!this.nodeId());
   protected readonly newRootName = signal('');
   protected readonly newRootKind = signal('');
   protected readonly rootKind = computed(() => this.data.activeTemplate()?.levels[0] ?? 'Item');

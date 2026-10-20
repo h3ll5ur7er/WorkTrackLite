@@ -58,6 +58,16 @@
           <option value="3day" [selected]="viewSetting() === '3day'">3 days</option>
           <option value="week" [selected]="viewSetting() === 'week'">Week</option>
         </select>
+        <button
+          #pageMenuBtn
+          type="button"
+          class="btn"
+          aria-haspopup="menu"
+          aria-label="More schedule actions"
+          (click)="openPageMenu(pageMenuBtn)"
+        >
+          ⋯
+        </button>
         <button type="button" class="btn btn--primary" (click)="openEditor(null)">+ New<span class="sched__long"> entry</span></button>
       </div>
     </header>
@@ -83,7 +93,38 @@
     <div class="sched__day-row">
       <div class="sched__gutter-spacer"></div>
       @for (d of days(); track d.ms) {
-        <div class="sched__day-head" [class.sched__day-head--today]="d.isToday">{{ d.label }}</div>
+        <div class="sched__day-head" [class.sched__day-head--today]="d.isToday">
+          @if (isDayLocked(d.ms)) {
+            <span class="sched__lock" title="Locked period"
+              ><span aria-hidden="true">🔒</span><span class="visually-hidden">Locked:</span></span
+            >
+          }
+          {{ d.label }}
+          @if (suggested()[$index]?.length) {
+            <button
+              #sugBtn
+              type="button"
+              class="sched__suggested"
+              aria-haspopup="menu"
+              [attr.data-testid]="'day-suggested-' + $index"
+              (click)="openDaySuggestions(sugBtn, $index)"
+            >
+              {{ suggested()[$index].length }} suggested
+            </button>
+          }
+          @if (dayWork()[$index]; as w) {
+            @if (w.absence) {
+              <span class="sched__day-work sched__day-work--off" [attr.data-testid]="'day-work-' + $index">{{
+                absenceLabel(w.absence)
+              }}</span>
+            }
+            @if (w.target || w.worked) {
+              <span class="sched__day-work" [class.sched__day-work--met]="w.worked >= w.target" [attr.data-testid]="'day-hours-' + $index"
+                >{{ formatHM(w.worked) }} / {{ formatHM(w.target) }}</span
+              >
+            }
+          }
+        </div>
       }
     </div>
 
@@ -99,6 +140,7 @@
             #col
             class="sched__col"
             [class.sched__col--today]="d.isToday"
+            [class.sched__col--locked]="isDayLocked(d.ms)"
             [class.sched__col--drop]="dropGhost()?.dayIdx === dayIdx"
             [attr.data-day]="dayIdx"
             [attr.aria-label]="d.label"
@@ -121,17 +163,38 @@
                 <div class="sched__ghost" [style.top.%]="(g.topMin / 1440) * 100" [style.height.%]="(60 / 1440) * 100"></div>
               }
             }
+            @for (g of suggested()[dayIdx]; track g.s.key) {
+              @if (!g.hidden) {
+                <button
+                  type="button"
+                  class="suggest"
+                  aria-haspopup="menu"
+                  [attr.aria-label]="suggestionLabel(g.s)"
+                  [title]="suggestionLabel(g.s)"
+                  [style.top.%]="(g.topMin / 1440) * 100"
+                  [style.height.%]="(g.heightMin / 1440) * 100"
+                  (click)="onSuggestionClick($event, g.s)"
+                  (contextmenu)="onSuggestionClick($event, g.s)"
+                >
+                  <span class="suggest__title">{{ suggestionName(g.s) }}</span>
+                  <span class="suggest__meta">{{ formatRange(g.s.start, g.s.end) }} · suggested</span>
+                </button>
+              }
+            }
             @for (seg of columns()[dayIdx]; track seg.entry.id) {
               <div
                 class="block"
                 role="button"
                 tabindex="0"
                 [attr.aria-label]="blockLabel(seg)"
+                [title]="blockLabel(seg)"
                 [attr.data-entry-id]="seg.entry.id"
                 [class.block--running]="seg.entry.end === null"
                 [class.block--overlap]="seg.overlap"
                 [class.block--dragging]="isPreviewing(seg)"
                 [class.block--selected]="isSelected(seg.entry.id)"
+                [class.block--locked]="isEntryLocked(seg.entry)"
+                [class.block--found]="found() === seg.entry.id"
                 [attr.aria-pressed]="selecting() && seg.entry.end !== null ? isSelected(seg.entry.id) : null"
                 [style.top.%]="(seg.topMin / 1440) * 100"
                 [style.height.%]="(seg.heightMin / 1440) * 100"
@@ -168,6 +231,12 @@
   }
 
   @if (editor(); as d) {
-    <app-entry-editor [draft]="d" (saved)="onEditorSave($event)" (cancelled)="editor.set(null)" (deleted)="onEditorDelete($event)" />
+    <app-entry-editor
+      [draft]="d"
+      [readonly]="editorLocked()"
+      (saved)="onEditorSave($event)"
+      (cancelled)="editor.set(null)"
+      (deleted)="onEditorDelete($event)"
+    />
   }
 </div>

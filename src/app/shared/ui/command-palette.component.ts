@@ -179,14 +179,22 @@ export class CommandPaletteComponent {
       acts.push({ id: `nav:${nav.path}`, label: `Go to ${nav.label}`, hint: 'view', run: () => this.router.navigateByUrl(nav.path) });
     }
     acts.push(
+      { id: 'search', label: 'Search entries', hint: 'view', run: () => this.router.navigateByUrl('/search') },
       { id: 'backup', label: 'Export backup (JSON)', hint: 'data', run: () => this.backup.exportToFile() },
       { id: 'theme', label: 'Toggle theme', hint: 'view', run: () => this.theme.toggle() },
     );
-    for (const n of tree.nodes) {
+    // Favourites first, then tree order (stable sort).
+    const nodes = [...tree.nodes].sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite));
+    for (const n of nodes) {
       if (n.archived || tree.hasArchivedAncestor(n.id)) continue;
       const path = tree.pathLabel(n.id);
       if (!running || running.nodeId !== n.id) {
-        acts.push({ id: `start:${n.id}`, label: `Start timer on ${path}`, hint: n.kind, run: () => this.timer.start(n.id) });
+        acts.push({
+          id: `start:${n.id}`,
+          label: `Start timer on ${path}`,
+          hint: n.favorite ? `★ ${n.kind}` : n.kind,
+          run: () => this.timer.start(n.id),
+        });
       }
       acts.push({ id: `open:${n.id}`, label: `Open ${path}`, hint: n.kind, run: () => this.router.navigate(['/manage', n.id]) });
     }
@@ -194,9 +202,19 @@ export class CommandPaletteComponent {
   });
 
   readonly filtered = computed<Action[]>(() => {
-    const terms = this.query().toLowerCase().split(/\s+/).filter(Boolean);
+    const q = this.query().trim();
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
     const acts = terms.length ? this.actions().filter((a) => terms.every((t) => a.label.toLowerCase().includes(t))) : this.actions();
-    return acts.slice(0, MAX_RESULTS);
+    const out = acts.slice(0, MAX_RESULTS);
+    // Always offer a full-text search for what was typed.
+    if (q)
+      out.push({
+        id: 'search:q',
+        label: `Search entries for “${q}”`,
+        hint: 'search',
+        run: () => this.router.navigate(['/search'], { queryParams: { q } }),
+      });
+    return out;
   });
 
   openPalette(): void {

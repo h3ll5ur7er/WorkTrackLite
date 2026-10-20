@@ -9,6 +9,7 @@ import { ToastService } from '../../core/toast.service';
 import { entryDurationSeconds, reportForBudget } from '../../domain/budget';
 import { DEFAULT_CURRENCY, formatMoney, totalAmount } from '../../domain/billing';
 import { entriesToCsv } from '../../domain/csv';
+import { isLocked, lockEnd } from '../../domain/lock';
 import { clipToRange } from '../../domain/reports';
 import { formatHMS, parseTags } from '../../domain/format';
 import { MS_PER_HOUR } from '../../domain/time';
@@ -166,6 +167,20 @@ export class NodeDetailComponent {
   protected setRate(v: number): Promise<void> {
     return this.patch({ rate: Number.isFinite(v) && v >= 0 ? v : undefined });
   }
+  private readonly lockEndMs = computed(() => lockEnd(this.data.settings().lockedUntil));
+  protected isEntryLocked(e: TimeEntry): boolean {
+    return isLocked(e.start, this.lockEndMs());
+  }
+
+  protected readonly workTimeOn = computed(() => !!this.data.settings().workTime);
+  protected readonly inheritedWork = computed(() => {
+    const n = this.node();
+    return n?.parentId ? this.tree().countsAsWork(n.parentId) : true;
+  });
+  protected setWork(v: string): Promise<void> {
+    return this.patch({ work: v === 'yes' ? true : v === 'no' ? false : undefined });
+  }
+
   protected setBillable(v: string): Promise<void> {
     return this.patch({ billable: v === 'yes' ? true : v === 'no' ? false : undefined });
   }
@@ -201,6 +216,11 @@ export class NodeDetailComponent {
   protected setShowInDashboard(value: boolean): Promise<void> {
     // Store no override when the value matches the default (leaf → shown).
     return this.patch({ showInDashboard: value === this.isLeaf() ? undefined : value });
+  }
+
+  protected async toggleFavorite(): Promise<void> {
+    const n = this.node();
+    if (n) await this.data.updateNode(n.id, { favorite: n.favorite ? undefined : true });
   }
 
   protected async setArchived(archived: boolean): Promise<void> {
@@ -244,7 +264,13 @@ export class NodeDetailComponent {
     if (!n) return;
     const what = this.hasChildren() ? 'it, all its children and their time entries' : 'it and its time entries';
     if (!confirm(`Delete "${n.name}"? This removes ${what}.\n\nTip: Archive keeps the history.`)) return;
-    const removed = await this.data.deleteNodeCascade(n.id);
+    let removed: Awaited<ReturnType<DataService['deleteNodeCascade']>>;
+    try {
+      removed = await this.data.deleteNodeCascade(n.id);
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : String(e));
+      return;
+    }
     await this.router.navigate(n.parentId ? ['/manage', n.parentId] : ['/manage']);
     this.toast.show(`Deleted ${n.name}`, { action: { label: 'Undo', run: () => this.data.restoreDeleted(removed) } });
   }

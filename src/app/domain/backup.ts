@@ -1,7 +1,21 @@
-import { Budget, BudgetType, DEFAULT_SETTINGS, HierarchyTemplate, Node, Settings, TimeEntry } from '../core/models';
+import {
+  Absence,
+  AbsenceKind,
+  Budget,
+  BudgetType,
+  DEFAULT_SETTINGS,
+  HierarchyTemplate,
+  Node,
+  RecurringRule,
+  Settings,
+  TimeEntry,
+} from '../core/models';
 import { isCurrencyCode } from './billing';
 import { isHexColor } from './color';
 import { closeAllButNewest } from './entries';
+import { fromDateKey } from './time';
+
+const ABSENCE_KIND_IDS: readonly AbsenceKind[] = ['vacation', 'sick', 'holiday', 'other'];
 
 /**
  * JSON backup format. Bump BACKUP_FORMAT_VERSION whenever the persisted shape
@@ -135,6 +149,8 @@ function toNode(v: unknown, i: number): Node {
     color: isHexColor(o['color']) ? o['color'].toLowerCase() : undefined,
     rate: typeof o['rate'] === 'number' && Number.isFinite(o['rate']) && o['rate'] >= 0 ? o['rate'] : undefined,
     billable: typeof o['billable'] === 'boolean' ? o['billable'] : undefined,
+    work: typeof o['work'] === 'boolean' ? o['work'] : undefined,
+    favorite: o['favorite'] === true ? true : undefined,
     archived: o['archived'] === true ? true : undefined,
     showInDashboard: typeof o['showInDashboard'] === 'boolean' ? o['showInDashboard'] : undefined,
     createdAt: typeof o['createdAt'] === 'number' ? o['createdAt'] : 0,
@@ -186,9 +202,58 @@ function toSettings(v: unknown): Settings {
     s.rounding = { minutes: r['minutes'], mode: r['mode'] as 'up' | 'nearest' | 'down' };
   }
   if (typeof o['idleGuard'] === 'boolean') s.idleGuard = o['idleGuard'];
+  if (typeof o['budgetAlerts'] === 'boolean') s.budgetAlerts = o['budgetAlerts'];
+  if (typeof o['lockedUntil'] === 'string' && fromDateKey(o['lockedUntil']) != null) s.lockedUntil = o['lockedUntil'];
+  if (Array.isArray(o['recurring'])) {
+    const rules = o['recurring'].map(toRecurringRule).filter((r): r is RecurringRule => !!r);
+    if (rules.length) s.recurring = rules;
+  }
+  if (Array.isArray(o['recurringSkipped'])) {
+    const keys = o['recurringSkipped'].filter((k): k is string => typeof k === 'string' && /^.+@\d{4}-\d{2}-\d{2}$/.test(k));
+    if (keys.length) s.recurringSkipped = keys;
+  }
+  const wt = o['workTime'];
+  if (
+    isObject(wt) &&
+    Array.isArray(wt['hours']) &&
+    wt['hours'].length === 7 &&
+    typeof wt['from'] === 'string' &&
+    fromDateKey(wt['from']) != null
+  ) {
+    const hours = wt['hours'].map((h) => (typeof h === 'number' && h >= 0 && h <= 24 ? h : 0));
+    s.workTime = { hours, from: wt['from'] };
+    if (typeof wt['carrySeconds'] === 'number' && Number.isFinite(wt['carrySeconds'])) s.workTime.carrySeconds = wt['carrySeconds'];
+  }
+  if (Array.isArray(o['absences'])) {
+    const byDate = new Map<string, Absence>();
+    for (const a of o['absences']) {
+      if (!isObject(a) || typeof a['date'] !== 'string' || fromDateKey(a['date']) == null) continue;
+      if (!ABSENCE_KIND_IDS.includes(a['kind'] as AbsenceKind)) continue;
+      byDate.set(a['date'], { date: a['date'], kind: a['kind'] as AbsenceKind, ...(a['half'] === true ? { half: true } : {}) });
+    }
+    if (byDate.size) s.absences = [...byDate.values()].sort((x, y) => x.date.localeCompare(y.date));
+  }
+  if (typeof o['budgetNotifications'] === 'boolean') s.budgetNotifications = o['budgetNotifications'];
   if (typeof o['idleAwayMinutes'] === 'number' && o['idleAwayMinutes'] > 0) s.idleAwayMinutes = o['idleAwayMinutes'];
   if (typeof o['idleLongRunningHours'] === 'number' && o['idleLongRunningHours'] > 0) s.idleLongRunningHours = o['idleLongRunningHours'];
   return s;
+}
+
+function toRecurringRule(v: unknown): RecurringRule | null {
+  if (!isObject(v)) return null;
+  const { id, nodeId, weekdays, startMinutes, minutes, from } = v;
+  if (typeof id !== 'string' || !id || typeof nodeId !== 'string' || !nodeId) return null;
+  if (!Array.isArray(weekdays) || typeof from !== 'string' || fromDateKey(from) == null) return null;
+  const days = [...new Set(weekdays.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  if (!days.length || typeof startMinutes !== 'number' || startMinutes < 0 || startMinutes >= 24 * 60) return null;
+  if (typeof minutes !== 'number' || minutes <= 0 || minutes > 24 * 60) return null;
+  const rule: RecurringRule = { id, nodeId, weekdays: days, startMinutes, minutes, from };
+  const note = optStr(v['note']);
+  const tags = optTags(v['tags']);
+  if (note) rule.note = note;
+  if (tags) rule.tags = tags;
+  if (v['paused'] === true) rule.paused = true;
+  return rule;
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {
