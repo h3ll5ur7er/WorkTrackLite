@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "worktrack": {
+    "where-time-flew": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -22,7 +22,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/worktrack",
+            "outputPath": "dist/where-time-flew",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
@@ -70,10 +70,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "worktrack:build:production"
+              "buildTarget": "where-time-flew:build:production"
             },
             "development": {
-              "buildTarget": "worktrack:build:development"
+              "buildTarget": "where-time-flew:build:development"
             }
           },
           "defaultConfiguration": "development"

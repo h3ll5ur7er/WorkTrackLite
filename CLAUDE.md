@@ -1,4 +1,4 @@
-# WorkTrackLite: notes for AI assistants
+# Where Time Flew: notes for AI assistants
 
 Local-first time tracker: zoneless Angular 22 + Dexie (IndexedDB), no backend.
 Read `docs/ARCHITECTURE.md` before larger changes.
@@ -26,6 +26,8 @@ Requires Node 24 (`.nvmrc`). If Playwright's browser is missing, run
   and migration in `domain/backup.ts`.
 - No lazy routes or dynamic `import()`: the single-file build must stay one bundle.
 - Keep `index.html` free of `<base>` (hash routing from `file://`).
+- The app was renamed from WorkTrackLite: keep the `worktracklite` IndexedDB name,
+  the `worktracklite.*` localStorage keys and the legacy backup id (existing data).
 - Opening something the user types into (menu, dialog, palette): set state, then
   `renderNow(cdr)` from `shared/render-now.ts`, and focus in `ngAfterViewInit`.
 - Fixed bugs get a regression test (unit or e2e).

@@ -5,7 +5,7 @@ import { planMerge, splitRanges } from '../domain/entry-edit';
 import { LockedError, isLocked, lockEnd, lockProblem } from '../domain/lock';
 import { pruneSkipped } from '../domain/recurring';
 import { TreeIndex, closedSubtreeSeconds, entriesByNode, reorderSiblings } from '../domain/tree';
-import { WORKTRACK_DB, uid } from './db';
+import { APP_DB, uid } from './db';
 import { Absence, Budget, DEFAULT_SETTINGS, HierarchyTemplate, Node, RecurringRule, Settings, TimeEntry, WorkTime } from './models';
 import { BUILTIN_TEMPLATES } from './templates';
 
@@ -32,7 +32,7 @@ export type NewEntry = Pick<TimeEntry, 'nodeId' | 'start'> & { end: number } & P
  */
 @Injectable({ providedIn: 'root' })
 export class DataService {
-  readonly db = inject(WORKTRACK_DB);
+  readonly db = inject(APP_DB);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly nodes = signal<Node[]>([]);

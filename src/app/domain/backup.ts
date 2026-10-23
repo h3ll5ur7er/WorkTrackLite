@@ -21,7 +21,14 @@ const ABSENCE_KIND_IDS: readonly AbsenceKind[] = ['vacation', 'sick', 'holiday',
  * JSON backup format. Bump BACKUP_FORMAT_VERSION whenever the persisted shape
  * changes and extend `migrateBackup` so older files still import.
  */
-export const BACKUP_APP_ID = 'worktracklite';
+export const BACKUP_APP_ID = 'where-time-flew';
+/** Backups made before the rename (Where Time Flew) import unchanged. */
+const LEGACY_BACKUP_APP_IDS: readonly string[] = ['worktracklite'];
+
+/** Whether a file's `app` field is ours, today's name or an earlier one. */
+export function isBackupAppId(app: unknown): boolean {
+  return app === BACKUP_APP_ID || LEGACY_BACKUP_APP_IDS.includes(app as string);
+}
 export const BACKUP_FORMAT_VERSION = 2;
 
 export interface BackupData {
@@ -44,7 +51,7 @@ export function createBackup(data: BackupData, now = Date.now()): BackupFile {
 export function backupFileName(now = Date.now(), encrypted = false): string {
   const d = new Date(now);
   const p = (n: number) => String(n).padStart(2, '0');
-  return `worktracklite-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}${encrypted ? '.encrypted' : ''}.json`;
+  return `where-time-flew-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}${encrypted ? '.encrypted' : ''}.json`;
 }
 
 export type ParseResult = { ok: true; data: BackupData; warnings: string[] } | { ok: false; error: string };
@@ -61,8 +68,8 @@ export function parseBackup(text: string): ParseResult {
   } catch {
     return { ok: false, error: 'The file is not valid JSON.' };
   }
-  if (!isObject(raw) || raw['app'] !== BACKUP_APP_ID) {
-    return { ok: false, error: 'This is not a WorkTrackLite backup.' };
+  if (!isObject(raw) || !isBackupAppId(raw['app'])) {
+    return { ok: false, error: 'This is not a Where Time Flew backup.' };
   }
   const version = raw['formatVersion'];
   if (typeof version !== 'number' || version < 1) return { ok: false, error: 'Missing backup format version.' };

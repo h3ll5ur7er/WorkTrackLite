@@ -1,6 +1,6 @@
 # Architecture
 
-WorkTrackLite is a zoneless Angular 22 single-page app. All state lives in
+Where Time Flew is a zoneless Angular 22 single-page app. All state lives in
 IndexedDB (via [Dexie](https://dexie.org)) and is mirrored into Angular signals.
 There is no server.
 
@@ -11,7 +11,7 @@ src/app/
   app.nav.ts           top-level navigation items
   core/                stateful services (Angular, IndexedDB)
     models.ts          persisted types: Node, TimeEntry, Budget, Settings
-    db.ts              Dexie schema + migrations, WORKTRACK_DB token, uid()
+    db.ts              Dexie schema + migrations, APP_DB token, uid()
     data.service.ts    the single source of truth; owns every write
     timer.service.ts   live timer (transactional start/stop/toggle/undo)
     backup.service.ts  JSON export / import
@@ -94,8 +94,14 @@ Schema changes need two steps, both covered by tests:
 2. **Backup format:** bump `BACKUP_FORMAT_VERSION` in `domain/backup.ts` and
    lift older files in `migrateBackup`. Validation lives in the same file.
 
-A backup is `{ app: 'worktracklite', formatVersion, exportedAt, nodes, entries,
+A backup is `{ app: 'where-time-flew', formatVersion, exportedAt, nodes, entries,
 templates, settings }`. Import replaces all data in one transaction.
+
+**Names from before the rename.** The app was called WorkTrackLite. Stored
+identifiers that users never see keep that name, so existing browsers keep
+their data: the IndexedDB database (`worktracklite`, `DB_NAME` in `core/db.ts`)
+and the `worktracklite.*` localStorage keys. Backups carrying the old `app`
+id (`worktracklite`, plain or encrypted) still import. Do not rename these.
 
 A password-protected backup wraps that JSON text (`domain/backup-crypto.ts`):
 `{ app, encrypted: 1, kdf: { PBKDF2, SHA-256, iterations, salt }, cipher:
@@ -117,7 +123,7 @@ on every machine. CSV exports use UTC ISO timestamps.
 ## Single-file build
 
 `npm run build:singlefile` runs `scripts/inline-singlefile.mjs`, which inlines
-the JS and CSS bundles into `dist/worktrack-singlefile.html`. Two rules keep it
+the JS and CSS bundles into `dist/where-time-flew-singlefile.html`. Two rules keep it
 working:
 
 - **No lazy loading** (`loadComponent`, dynamic `import()`): the script fails the

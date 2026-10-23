@@ -2,7 +2,7 @@ import { WrongPasswordError, cryptoAvailable, decryptBackup, encryptBackup, isEn
 
 // Few iterations keep the tests fast; the format stores the count, so decryption is unaffected.
 const FAST = 1_000;
-const PLAIN = JSON.stringify({ app: 'worktracklite', formatVersion: 2, nodes: [{ name: 'Zürich ✓' }] });
+const PLAIN = JSON.stringify({ app: 'where-time-flew', formatVersion: 2, nodes: [{ name: 'Zürich ✓' }] });
 
 describe('backup encryption', () => {
   it('is available in the test environment', () => {
@@ -13,7 +13,7 @@ describe('backup encryption', () => {
     const enc = await encryptBackup(PLAIN, 'correct horse', FAST);
     expect(isEncryptedBackup(enc)).toBe(true);
     expect(enc).not.toContain('Zürich');
-    expect(JSON.parse(enc)).toMatchObject({ app: 'worktracklite', encrypted: 1, kdf: { name: 'PBKDF2', iterations: FAST } });
+    expect(JSON.parse(enc)).toMatchObject({ app: 'where-time-flew', encrypted: 1, kdf: { name: 'PBKDF2', iterations: FAST } });
     expect(await decryptBackup(enc, 'correct horse')).toBe(PLAIN);
   });
 
@@ -48,6 +48,12 @@ describe('backup encryption', () => {
     ]) {
       await expect(decryptBackup(JSON.stringify({ ...f, kdf }), 'pw')).rejects.toThrow('does not support');
     }
+  });
+
+  it('regression: encrypted backups made before the rename are still recognised and open', async () => {
+    const old = JSON.stringify({ ...JSON.parse(await encryptBackup(PLAIN, 'pw', FAST)), app: 'worktracklite' });
+    expect(isEncryptedBackup(old)).toBe(true);
+    expect(await decryptBackup(old, 'pw')).toBe(PLAIN);
   });
 
   it('requires a password and recognises only its own envelope', async () => {

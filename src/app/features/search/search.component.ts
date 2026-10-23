@@ -224,6 +224,6 @@ export class SearchComponent implements AfterViewInit {
 
   protected exportCsv(): void {
     const csv = entriesToCsv(this.results(), this.data.tree(), Date.now(), this.data.settings().rounding);
-    downloadFile(`worktracklite-search-${toDateKey(Date.now())}.csv`, csv, 'text/csv');
+    downloadFile(`where-time-flew-search-${toDateKey(Date.now())}.csv`, csv, 'text/csv');
   }
 }

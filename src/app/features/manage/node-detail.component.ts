@@ -311,7 +311,7 @@ export class NodeDetailComponent {
     if (!n) return;
     const entries = scope === 'node' ? this.ownEntries() : this.subtreeEntries();
     const csv = entriesToCsv(entries, this.tree(), Date.now(), this.data.settings().rounding);
-    downloadFile(`worktracklite_${safeFileName(n.name)}_${scope}.csv`, csv, 'text/csv;charset=utf-8');
+    downloadFile(`where-time-flew_${safeFileName(n.name)}_${scope}.csv`, csv, 'text/csv;charset=utf-8');
   }
 
   protected entrySeconds(e: TimeEntry): number {

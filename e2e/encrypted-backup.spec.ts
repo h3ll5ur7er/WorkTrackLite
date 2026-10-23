@@ -16,9 +16,9 @@ test('export an encrypted backup and restore it with the password on a fresh pro
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export encrypted backup (JSON)' }).click();
   const dl = await download;
-  expect(dl.suggestedFilename()).toMatch(/^worktracklite-backup-\d{4}-\d\d-\d\d\.encrypted\.json$/);
+  expect(dl.suggestedFilename()).toMatch(/^where-time-flew-backup-\d{4}-\d\d-\d\d\.encrypted\.json$/);
   const text = fs.readFileSync(await dl.path(), 'utf8');
-  expect(JSON.parse(text)).toMatchObject({ app: 'worktracklite', encrypted: 1, kdf: { name: 'PBKDF2', iterations: 600_000 } });
+  expect(JSON.parse(text)).toMatchObject({ app: 'where-time-flew', encrypted: 1, kdf: { name: 'PBKDF2', iterations: 600_000 } });
   expect(text).not.toContain('Acme');
   expect(text).not.toContain('secret note');
 

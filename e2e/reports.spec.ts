@@ -60,7 +60,7 @@ test('summary and entries CSV export the shown range', async ({ page }) => {
   let download = page.waitForEvent('download');
   await page.getByRole('button', { name: /Summary CSV/ }).click();
   let d = await download;
-  expect(d.suggestedFilename()).toBe('worktracklite_report_2026-10-19_2026-10-25_by-node.csv');
+  expect(d.suggestedFilename()).toBe('where-time-flew_report_2026-10-19_2026-10-25_by-node.csv');
   expect(fs.readFileSync(await d.path(), 'utf8')).toContain('Acme / Website / Design,2,2,2,0\n');
 
   download = page.waitForEvent('download');

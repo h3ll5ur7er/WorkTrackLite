@@ -5,6 +5,7 @@ import { TimeEntry } from './models';
 import { TimerChange, TimerService } from './timer.service';
 import { ToastService } from './toast.service';
 
+// Storage keys keep the pre-rename prefix so existing browsers keep their state.
 const LAST_SEEN_KEY = 'worktracklite.lastSeen';
 const ACK_KEY = 'worktracklite.idleAck';
 const HEARTBEAT_MS = 30_000;

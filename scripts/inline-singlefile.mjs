@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Inlines the production build into one self-contained HTML file:
- *   dist/worktrack/browser/index.html → dist/worktrack-singlefile.html
+ *   dist/where-time-flew/browser/index.html → dist/where-time-flew-singlefile.html
  *
  * Every same-origin <script src> and <link rel=stylesheet> is inlined.
  * Scripts KEEP `type="module"`: inline module scripts run fine from file://
@@ -20,9 +20,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const browserDir = path.join(root, 'dist', 'worktrack', 'browser');
+const browserDir = path.join(root, 'dist', 'where-time-flew', 'browser');
 const indexPath = path.join(browserDir, 'index.html');
-const outPath = path.join(root, 'dist', 'worktrack-singlefile.html');
+const outPath = path.join(root, 'dist', 'where-time-flew-singlefile.html');
 
 function fail(msg) {
   console.error(`inline-singlefile: ${msg}`);

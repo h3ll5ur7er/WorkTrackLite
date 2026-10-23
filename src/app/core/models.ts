@@ -1,4 +1,4 @@
-// Core data model for WorkTrackLite. Everything here is persisted in IndexedDB
+// Core data model for Where Time Flew. Everything here is persisted in IndexedDB
 // (see db.ts) and round-trips through the JSON backup format (domain/backup.ts),
 // so changes need a schema migration and a backup-format bump.
 

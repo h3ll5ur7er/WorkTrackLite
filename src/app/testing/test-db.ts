@@ -1,11 +1,11 @@
 import { Provider } from '@angular/core';
-import { WORKTRACK_DB, WorkTrackDB, uid } from '../core/db';
+import { APP_DB, AppDB, uid } from '../core/db';
 import { Node, TimeEntry } from '../core/models';
 
 /** A fresh, uniquely named database per test (fake-indexeddb). */
-export function provideTestDb(): { db: WorkTrackDB; providers: Provider[] } {
-  const db = new WorkTrackDB(`test-${uid()}`);
-  return { db, providers: [{ provide: WORKTRACK_DB, useValue: db }] };
+export function provideTestDb(): { db: AppDB; providers: Provider[] } {
+  const db = new AppDB(`test-${uid()}`);
+  return { db, providers: [{ provide: APP_DB, useValue: db }] };
 }
 
 export function makeNode(partial: Partial<Node> & { id: string }): Node {

@@ -77,7 +77,7 @@ test('CSV export neutralises formulas', async ({ page }) => {
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'CSV (this)' }).click();
   const d = await download;
-  expect(d.suggestedFilename()).toBe('worktracklite_Design_node.csv');
+  expect(d.suggestedFilename()).toBe('where-time-flew_Design_node.csv');
   const csv = fs.readFileSync(await d.path(), 'utf8');
   expect(csv).toContain(",'=1+1,");
 });

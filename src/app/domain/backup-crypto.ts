@@ -4,7 +4,7 @@
 // stays self-describing. Uses WebCrypto only (no dependencies); WebCrypto needs
 // a secure context (https, localhost or a file:// page).
 
-import { BACKUP_APP_ID } from './backup';
+import { BACKUP_APP_ID, isBackupAppId } from './backup';
 
 /** OWASP's 2023 recommendation for PBKDF2-HMAC-SHA256. */
 export const PBKDF2_ITERATIONS = 600_000;
@@ -15,7 +15,8 @@ const SALT_BYTES = 16;
 const IV_BYTES = 12;
 
 export interface EncryptedBackupFile {
-  app: typeof BACKUP_APP_ID;
+  /** BACKUP_APP_ID when written; older files carry the pre-rename id. */
+  app: string;
   encrypted: 1;
   kdf: { name: 'PBKDF2'; hash: 'SHA-256'; iterations: number; salt: string };
   cipher: { name: 'AES-GCM'; iv: string };
@@ -37,7 +38,7 @@ export function cryptoAvailable(): boolean {
 export function isEncryptedBackup(text: string): boolean {
   try {
     const o = JSON.parse(text) as Partial<EncryptedBackupFile> | null;
-    return !!o && typeof o === 'object' && o.app === BACKUP_APP_ID && o.encrypted === 1;
+    return !!o && typeof o === 'object' && isBackupAppId(o.app) && o.encrypted === 1;
   } catch {
     return false;
   }

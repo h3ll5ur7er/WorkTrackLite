@@ -8,7 +8,7 @@ test('export a backup and restore it into an empty browser profile', async ({ pa
   await page.getByRole('button', { name: /Export backup/ }).click();
   const file = await (await download).path();
   const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-  expect(json).toMatchObject({ app: 'worktracklite', formatVersion: 2 });
+  expect(json).toMatchObject({ app: 'where-time-flew', formatVersion: 2 });
   expect(json.nodes).toHaveLength(4);
   expect(json.entries).toHaveLength(1);
   await expect(page.getByText(/Last backup: (?!never)/)).toBeVisible();
@@ -45,8 +45,11 @@ test('invalid backups are rejected with a reason and change nothing', async ({ p
   expect(await readStore(page, 'nodes')).toHaveLength(4);
 });
 
-test('older v1 backups are migrated on import', async ({ page }) => {
-  const v1 = backupJson([{ id: 'a', name: 'Legacy', budget: { type: 'per_hour' as never, seconds: 3600 } }], [], { formatVersion: 1 });
+test('older v1 backups (made under the old name, WorkTrackLite) are migrated on import', async ({ page }) => {
+  const v1 = backupJson([{ id: 'a', name: 'Legacy', budget: { type: 'per_hour' as never, seconds: 3600 } }], [], {
+    formatVersion: 1,
+    app: 'worktracklite',
+  });
   await seed(page, v1);
   const [node] = await readStore<{ budget: { type: string } }>(page, 'nodes');
   expect(node.budget.type).toBe('target');

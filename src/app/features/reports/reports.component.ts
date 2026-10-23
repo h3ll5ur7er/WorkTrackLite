@@ -169,14 +169,14 @@ export class ReportsComponent {
         this.tagRows().map((r) => [r.tag ?? '(untagged)', hours(r.seconds)]),
       );
     }
-    downloadFile(`worktracklite_report_${this.fileSuffix()}_by-${this.groupBy()}.csv`, csv, 'text/csv;charset=utf-8');
+    downloadFile(`where-time-flew_report_${this.fileSuffix()}_by-${this.groupBy()}.csv`, csv, 'text/csv;charset=utf-8');
   }
 
   /** Entries in the range, clipped to it (start/end and durations inside the range only). */
   protected exportEntries(): void {
     const clipped = this.pieces().map((p) => ({ ...p.entry, start: p.from, end: p.to }));
     downloadFile(
-      `worktracklite_entries_${this.fileSuffix()}.csv`,
+      `where-time-flew_entries_${this.fileSuffix()}.csv`,
       entriesToCsv(clipped, this.data.tree(), Date.now(), this.rounding()),
       'text/csv;charset=utf-8',
     );

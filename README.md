@@ -1,4 +1,4 @@
-# WorkTrackLite
+# Where Time Flew (WTF)
 
 A **local-first, hierarchical time tracker** that runs entirely in your browser.
 No backend, no account, no telemetry: data lives in IndexedDB on your device.
@@ -57,8 +57,8 @@ First e2e run on a new machine: `npx playwright install --with-deps chromium`.
 
 | Script                        | What it does                                                 |
 | ----------------------------- | ------------------------------------------------------------ |
-| `npm run build`               | Production PWA build → `dist/worktrack/browser/`             |
-| `npm run build:singlefile`    | Also writes `dist/worktrack-singlefile.html`                 |
+| `npm run build`               | Production PWA build → `dist/where-time-flew/browser/`       |
+| `npm run build:singlefile`    | Also writes `dist/where-time-flew-singlefile.html`           |
 | `npm run test:watch`          | Unit tests in watch mode                                     |
 | `npm run test:coverage`       | Unit tests with coverage report in `coverage/`               |
 | `npm run e2e:only`            | Playwright against an existing `dist/` (skip the build)      |
@@ -70,8 +70,14 @@ First e2e run on a new machine: `npx playwright install --with-deps chromium`.
 
 `.github/workflows/ci.yml` runs format, lint, unit tests and e2e tests on every
 pull request and push. On `main`, a green run deploys to **GitHub Pages**
-(including `/worktrack-singlefile.html`). Enable it once under
+(including `/where-time-flew-singlefile.html`). Enable it once under
 _Settings → Pages → Build and deployment → Source: GitHub Actions_.
+
+The Pages address contains the repository name
+(`https://<user>.github.io/<repository>/`), so renaming the repository moves the
+app to a new address. Data stays (browsers store it per site, and the site is
+the same `github.io` host), but an installed app must be reinstalled from the
+new address.
 
 ## Your data
 

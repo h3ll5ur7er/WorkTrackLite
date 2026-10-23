@@ -14,7 +14,7 @@ import { PasswordPromptComponent } from '../../shared/ui/password-prompt.compone
   imports: [PasswordPromptComponent],
   template: `
     <form class="setup" (submit)="$event.preventDefault(); finish()">
-      <h1>Welcome to WorkTrackLite</h1>
+      <h1>Welcome to Where Time Flew</h1>
       <p class="muted">Pick a starting hierarchy template — you can change everything later.</p>
       <fieldset class="tpl">
         <legend class="visually-hidden">Hierarchy template</legend>

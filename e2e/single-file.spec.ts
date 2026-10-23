@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from './fixtures';
 
-const singleFilePath = path.resolve(__dirname, '..', 'dist', 'worktrack-singlefile.html');
+const singleFilePath = path.resolve(__dirname, '..', 'dist', 'where-time-flew-singlefile.html');
 const singleFileUrl = pathToFileURL(singleFilePath).href;
 
 test('regression: inlined bundles stay ES modules and there is no <base> tag', () => {
@@ -20,7 +20,7 @@ test('regression: inlined bundles stay ES modules and there is no <base> tag', (
 
 test('regression: the single-file build works when opened from disk (file://)', async ({ page }) => {
   await page.goto(singleFileUrl);
-  await expect(page.getByRole('heading', { name: 'Welcome to WorkTrackLite' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Where Time Flew' })).toBeVisible();
   await page.getByLabel(/First customer name/i).fill('Offline Co');
   await page.getByRole('button', { name: 'Get started' }).click();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Offline Co');
@@ -39,7 +39,7 @@ test('regression: the single-file build works when opened from disk (file://)', 
 });
 
 test('the deployed app links to the single-file download', async ({ page, request }) => {
-  const res = await request.get('/worktrack-singlefile.html');
+  const res = await request.get('/where-time-flew-singlefile.html');
   expect(res.ok()).toBe(true);
   expect(await res.text()).not.toMatch(/<script[^>]+src=/);
 
@@ -48,5 +48,5 @@ test('the deployed app links to the single-file download', async ({ page, reques
   await page.getByRole('button', { name: 'Get started' }).click();
   await expect(page).toHaveURL(/#\/manage\//);
   await page.goto('/#/settings');
-  await expect(page.getByRole('link', { name: /Download single-file app/ })).toHaveAttribute('href', 'worktrack-singlefile.html');
+  await expect(page.getByRole('link', { name: /Download single-file app/ })).toHaveAttribute('href', 'where-time-flew-singlefile.html');
 });

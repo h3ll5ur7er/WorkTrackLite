@@ -4,16 +4,16 @@ const withLastNode = (id: string) => ({ settings: { id: 'app', theme: 'dark', we
 
 test('the tab title shows the running timer', async ({ page }) => {
   await seed(page, backupJson(ACME));
-  await expect(page).toHaveTitle('Dashboard · WorkTrackLite');
+  await expect(page).toHaveTitle('Dashboard · Where Time Flew');
   await page.getByRole('button', { name: 'Start timer on Design' }).click();
-  await expect(page).toHaveTitle(/^▶ 0:00:0\d Design · Dashboard · WorkTrackLite$/);
+  await expect(page).toHaveTitle(/^▶ 0:00:0\d Design · Dashboard · Where Time Flew$/);
   await page
     .getByRole('link', { name: /Schedule/ })
     .first()
     .click();
-  await expect(page).toHaveTitle(/^▶ 0:00:\d\d Design · Schedule · WorkTrackLite$/);
+  await expect(page).toHaveTitle(/^▶ 0:00:\d\d Design · Schedule · Where Time Flew$/);
   await page.getByRole('button', { name: '■ Stop' }).click();
-  await expect(page).toHaveTitle('Schedule · WorkTrackLite');
+  await expect(page).toHaveTitle('Schedule · Where Time Flew');
 });
 
 test('the installed app icon gets a badge while a timer runs', async ({ page }) => {
