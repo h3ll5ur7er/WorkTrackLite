@@ -2,12 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import Dexie from 'dexie';
 import { createBackup } from '../domain/backup';
 import { makeEntry, makeNode, provideTestDb, waitFor } from '../testing/test-db';
-import { WorkTrackDB, uid } from './db';
+import { AppDB, uid } from './db';
 import { DataService } from './data.service';
 import { DEFAULT_SETTINGS } from './models';
 
 describe('DataService', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
   let data: DataService;
 
   beforeEach(async () => {
@@ -269,7 +269,7 @@ describe('DataService', () => {
   });
 });
 
-describe('WorkTrackDB migration v1 → v2', () => {
+describe('AppDB migration v1 → v2', () => {
   it('renames per_hour budgets, drops the view setting and closes duplicate running timers', async () => {
     const name = `migrate-${uid()}`;
     const v1 = new Dexie(name);
@@ -289,7 +289,7 @@ describe('WorkTrackDB migration v1 → v2', () => {
     await v1.table('settings').put({ id: 'app', theme: 'dark', view: 'manage' });
     v1.close();
 
-    const db = new WorkTrackDB(name);
+    const db = new AppDB(name);
     await db.open();
     expect((await db.nodes.get('n'))?.budget.type).toBe('target');
     expect(await db.settings.get('app')).not.toHaveProperty('view');

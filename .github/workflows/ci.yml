@@ -53,8 +53,8 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           mkdir -p _site
-          cp -r dist/worktrack/browser/. _site/
-          cp dist/worktrack-singlefile.html _site/worktrack-singlefile.html
+          cp -r dist/where-time-flew/browser/. _site/
+          cp dist/where-time-flew-singlefile.html _site/where-time-flew-singlefile.html
       - uses: actions/upload-pages-artifact@v5
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:

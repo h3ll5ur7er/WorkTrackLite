@@ -18,7 +18,7 @@ import { RecurringSettingsComponent } from './recurring-settings.component';
 import { WorkTimeSettingsComponent } from './work-time-settings.component';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
+const SINGLE_FILE_NAME = 'where-time-flew-singlefile.html';
 
 @Component({
   selector: 'app-settings',
@@ -281,7 +281,7 @@ const SINGLE_FILE_NAME = 'worktrack-singlefile.html';
         <section class="panel" aria-labelledby="s-offline">
           <h2 id="s-offline">Offline copy</h2>
           <p>Download the whole app as one HTML file you can open from disk or host anywhere. Its data is separate from this copy's.</p>
-          <a class="btn" [href]="singleFileName" download="worktracklite.html">⬇ Download single-file app</a>
+          <a class="btn" [href]="singleFileName" download="where-time-flew.html">⬇ Download single-file app</a>
         </section>
       }
     </div>

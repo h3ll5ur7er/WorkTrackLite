@@ -89,6 +89,24 @@
   }
 }
 
+/* Narrow desktops and tablets: the top nav shows icons only (labels stay for screen readers). */
+@media (min-width: 721px) and (max-width: 1040px) {
+  .app__nav--top .app__nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .app__nav--top .app__nav-btn {
+    padding: 6px 10px;
+  }
+  .app__nav--top .app__nav-icon {
+    font-size: 1.1rem;
+  }
+}
+
 @media (max-width: 720px) {
   .app__brand strong {
     display: none;

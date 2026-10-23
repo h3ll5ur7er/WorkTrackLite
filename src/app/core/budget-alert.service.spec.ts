@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideTestDb, waitFor } from '../testing/test-db';
 import { BackupService } from './backup.service';
 import { BudgetAlertService } from './budget-alert.service';
-import { WorkTrackDB } from './db';
+import { AppDB } from './db';
 import { DataService } from './data.service';
 import { ToastService } from './toast.service';
 
@@ -11,7 +11,7 @@ const H = 3_600_000;
 const T = new Date(2026, 0, 15, 9, 0).getTime();
 
 describe('BudgetAlertService', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
   let data: DataService;
   let toast: ToastService;
   let nodeId: string;

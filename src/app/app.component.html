@@ -1,14 +1,20 @@
 <div class="app">
   <header class="app__header">
-    <a class="app__brand" routerLink="/dashboard" aria-label="WorkTrackLite home">
+    <a class="app__brand" routerLink="/dashboard" aria-label="Where Time Flew home">
       <span class="app__logo" aria-hidden="true">⏱</span>
-      <strong>WorkTrackLite</strong>
+      <strong>Where Time Flew</strong>
     </a>
 
     @if (data.ready() && !empty()) {
       <nav class="app__nav app__nav--top" aria-label="Main">
         @for (v of nav; track v.path) {
-          <a class="app__nav-btn" [routerLink]="v.path" routerLinkActive="app__nav-btn--active" ariaCurrentWhenActive="page">
+          <a
+            class="app__nav-btn"
+            [routerLink]="v.path"
+            routerLinkActive="app__nav-btn--active"
+            ariaCurrentWhenActive="page"
+            [title]="v.label"
+          >
             <span class="app__nav-icon" aria-hidden="true">{{ v.icon }}</span>
             <span class="app__nav-label">{{ v.label }}</span>
           </a>

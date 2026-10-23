@@ -3,6 +3,8 @@ import Dexie, { Table, Transaction } from 'dexie';
 import { closeAllButNewest } from '../domain/entries';
 import { HierarchyTemplate, Node, Settings, TimeEntry } from './models';
 
+// The app was called Where Time Flew before; the database keeps that name so existing
+// browsers keep their data (users never see it).
 export const DB_NAME = 'worktracklite';
 
 /**
@@ -15,7 +17,7 @@ export const DB_NAME = 'worktracklite';
  * Only index fields you query by. IndexedDB cannot index `null` or booleans,
  * so e.g. running entries (`end === null`) are found with a filter scan.
  */
-export class WorkTrackDB extends Dexie {
+export class AppDB extends Dexie {
   nodes!: Table<Node, string>;
   entries!: Table<TimeEntry, string>;
   templates!: Table<HierarchyTemplate, string>;
@@ -66,9 +68,9 @@ async function migrateToV2(tx: Transaction): Promise<void> {
 }
 
 /** The app-wide database. Tests provide a fresh, uniquely named instance. */
-export const WORKTRACK_DB = new InjectionToken<WorkTrackDB>('WORKTRACK_DB', {
+export const APP_DB = new InjectionToken<AppDB>('APP_DB', {
   providedIn: 'root',
-  factory: () => new WorkTrackDB(),
+  factory: () => new AppDB(),
 });
 
 export function uid(): string {

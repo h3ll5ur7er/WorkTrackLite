@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- Renamed to **Where Time Flew** (WTF for short; "WorkTrack" is already a
+  product). The installed app is called "WTF" on the home screen. Backups,
+  CSV exports and the single-file app use the new name
+  (`where-time-flew-backup-….json`, `where-time-flew-singlefile.html`). Existing
+  data stays where it is, and backups made under the old name still import.
+
 ### Added
 
 - The running timer is visible outside the app: the tab title shows
@@ -81,6 +89,9 @@
 
 ### Fixed
 
+- Between phone and wide desktop widths (about 720–1040 px) the header
+  overflowed and pushed the search, palette and theme buttons off-screen; the
+  top navigation now shows icons only there (with tooltips and accessible names).
 - Restoring a backup no longer announces budget overruns the backup already
   contains.
 - Lists that overflowed could hide entries: the Manage tree was clipped by

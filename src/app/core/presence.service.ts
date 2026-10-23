@@ -5,7 +5,7 @@ import { timerTitle } from '../domain/presence';
 import { DataService } from './data.service';
 import { TimerService } from './timer.service';
 
-export const APP_TITLE = 'WorkTrackLite';
+export const APP_TITLE = 'Where Time Flew';
 
 /**
  * Makes a running timer visible outside the app window: the document title

@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { WorkTrackDB } from '../../core/db';
+import { AppDB } from '../../core/db';
 import { DataService } from '../../core/data.service';
 import { provideTestDb, waitFor } from '../../testing/test-db';
 import { DashboardComponent } from './dashboard.component';
 
 describe('DashboardComponent', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
   let data: DataService;
 
   beforeEach(async () => {

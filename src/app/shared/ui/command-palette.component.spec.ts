@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { WorkTrackDB } from '../../core/db';
+import { AppDB } from '../../core/db';
 import { DataService } from '../../core/data.service';
 import { provideTestDb, waitFor } from '../../testing/test-db';
 import { CommandPaletteComponent } from './command-palette.component';
 
 describe('CommandPaletteComponent', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
 
   beforeEach(async () => {
     const t = provideTestDb();

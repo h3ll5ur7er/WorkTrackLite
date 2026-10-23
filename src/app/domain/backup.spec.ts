@@ -34,9 +34,17 @@ describe('backup', () => {
     expect(file.formatVersion).toBe(BACKUP_FORMAT_VERSION);
   });
 
+  it('regression: backups made before the rename (WorkTrackLite) still import', () => {
+    const file = valid();
+    expect(file.app).toBe('where-time-flew');
+    const res = parse({ ...file, app: 'worktracklite' });
+    expect(res.ok).toBe(true);
+    expect(res.ok && res.data.nodes).toEqual(file.nodes);
+  });
+
   it('rejects non-JSON, foreign JSON and newer formats', () => {
     expect(parseBackup('{nope')).toEqual({ ok: false, error: expect.stringContaining('not valid JSON') });
-    expect(parse({ hello: 1 })).toEqual({ ok: false, error: expect.stringContaining('not a WorkTrackLite backup') });
+    expect(parse({ hello: 1 })).toEqual({ ok: false, error: expect.stringContaining('not a Where Time Flew backup') });
     expect(parse({ ...valid(), formatVersion: 99 })).toEqual({ ok: false, error: expect.stringContaining('newer version') });
   });
 
@@ -164,7 +172,7 @@ describe('backup', () => {
   });
 
   it('names files by local date', () => {
-    expect(backupFileName(new Date(2026, 9, 3, 23, 59).getTime())).toBe('worktracklite-backup-2026-10-03.json');
-    expect(backupFileName(new Date(2026, 9, 3).getTime(), true)).toBe('worktracklite-backup-2026-10-03.encrypted.json');
+    expect(backupFileName(new Date(2026, 9, 3, 23, 59).getTime())).toBe('where-time-flew-backup-2026-10-03.json');
+    expect(backupFileName(new Date(2026, 9, 3).getTime(), true)).toBe('where-time-flew-backup-2026-10-03.encrypted.json');
   });
 });

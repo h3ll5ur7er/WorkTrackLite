@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { WorkTrackDB } from '../../core/db';
+import { AppDB } from '../../core/db';
 import { DataService } from '../../core/data.service';
 import { provideTestDb, waitFor } from '../../testing/test-db';
 import { EntryDraft, EntryEditorComponent } from './entry-editor.component';
 
 describe('EntryEditorComponent', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
   let nodeId: string;
 
   beforeEach(async () => {

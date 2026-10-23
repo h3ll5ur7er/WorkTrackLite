@@ -51,7 +51,8 @@ const NEIGHBOR_SNAP_MIN = 10;
 const DRAG_THRESHOLD_PX = 4;
 const LONG_PRESS_MS = 500;
 const HOUR_HEIGHT_PX = 56;
-const DRAG_MIME = 'application/x-worktrack-node';
+const DRAG_MIME = 'application/x-where-time-flew-node';
+// Storage keys keep the pre-rename prefix so existing browsers keep their state.
 const VIEW_KEY = 'worktracklite.scheduleView';
 /** Pointer-picked split points snap to this. */
 const SPLIT_SNAP_MIN = 5;

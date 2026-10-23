@@ -184,3 +184,20 @@ test('@mobile context menus open as a bottom sheet inside the screen', async ({ 
   expect(box.y + box.height).toBeGreaterThan(vp.height - 40);
   expect(box.width).toBeGreaterThan(vp.width - 24);
 });
+
+test('regression: the header fits at every desktop and tablet width', async ({ page }) => {
+  await seed(page, bigData());
+  for (const width of [721, 780, 900, 1040, 1100, 1280]) {
+    await page.setViewportSize({ width, height: 600 });
+    await page.goto('/#/dashboard');
+    for (const name of ['Search entries', 'Open command palette', /Switch to (light|dark) theme/]) {
+      await expect(
+        page.getByRole('banner').getByRole(name === 'Search entries' ? 'link' : 'button', { name }),
+        `${width}px`,
+      ).toBeInViewport({ ratio: 1 });
+    }
+    // Icon-only navigation still has accessible names.
+    await expect(page.getByRole('navigation', { name: 'Main', exact: true }).getByRole('link', { name: 'Settings' })).toBeVisible();
+    expect(await unreachable(page), `${width}px`).toEqual([]);
+  }
+});

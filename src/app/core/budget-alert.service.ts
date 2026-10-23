@@ -10,6 +10,7 @@ import { TimerService } from './timer.service';
 import { ToastService } from './toast.service';
 
 /** Levels already announced, shared by all tabs of this browser (so only one tab alerts). */
+// Storage keys keep the pre-rename prefix so existing browsers keep their state.
 const ANNOUNCED_KEY = 'worktracklite.budgetAlerts';
 
 /**
@@ -97,8 +98,8 @@ export class BudgetAlertService {
     try {
       // Android only shows notifications through the service worker.
       const reg = await this.window?.navigator.serviceWorker?.getRegistration();
-      if (reg) await reg.showNotification('WorkTrackLite', options);
-      else new Notification('WorkTrackLite', options);
+      if (reg) await reg.showNotification('Where Time Flew', options);
+      else new Notification('Where Time Flew', options);
     } catch {
       /* best effort: the toast already told the user */
     }

@@ -2,7 +2,7 @@
 /**
  * Minimal static server for the production build (used by the e2e tests and
  * handy for checking a build locally): `node scripts/serve-dist.mjs [port]`.
- * Serves dist/worktrack/browser plus dist/worktrack-singlefile.html, the same
+ * Serves dist/where-time-flew/browser plus dist/where-time-flew-singlefile.html, the same
  * layout the GitHub Pages deploy publishes.
  */
 import fs from 'node:fs';
@@ -11,8 +11,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const appDir = path.join(root, 'dist', 'worktrack', 'browser');
-const singleFile = path.join(root, 'dist', 'worktrack-singlefile.html');
+const appDir = path.join(root, 'dist', 'where-time-flew', 'browser');
+const singleFile = path.join(root, 'dist', 'where-time-flew-singlefile.html');
 const port = Number(process.argv[2] ?? process.env.PORT ?? 4300);
 
 const TYPES = {
@@ -34,7 +34,7 @@ if (!fs.existsSync(appDir)) {
 http
   .createServer((req, res) => {
     const urlPath = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
-    let file = urlPath === '/worktrack-singlefile.html' ? singleFile : path.join(appDir, urlPath === '/' ? 'index.html' : urlPath);
+    let file = urlPath === '/where-time-flew-singlefile.html' ? singleFile : path.join(appDir, urlPath === '/' ? 'index.html' : urlPath);
     if (!file.startsWith(appDir) && file !== singleFile) file = '';
     if (!file || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
       res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found');

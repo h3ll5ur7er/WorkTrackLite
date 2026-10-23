@@ -2,7 +2,7 @@ import { expect, test } from './fixtures';
 
 test('first run: pick a template, create the first node, build a hierarchy', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to WorkTrackLite' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Where Time Flew' })).toBeVisible();
   await page.getByLabel(/Consulting/).check();
   await page.getByLabel(/First account name/i).fill('Globex');
   await page.getByRole('button', { name: 'Get started' }).click();

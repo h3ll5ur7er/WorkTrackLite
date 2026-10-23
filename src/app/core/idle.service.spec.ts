@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideTestDb, waitFor } from '../testing/test-db';
-import { WorkTrackDB } from './db';
+import { AppDB } from './db';
 import { DataService } from './data.service';
 import { IdleService } from './idle.service';
 
@@ -10,7 +10,7 @@ const H = 3_600_000;
 const NOW = new Date(2026, 0, 15, 18, 0).getTime();
 
 describe('IdleService', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
   let data: DataService;
   let idle: IdleService;
   let nodeId: string;

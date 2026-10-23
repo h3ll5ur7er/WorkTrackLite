@@ -51,7 +51,7 @@ export interface SeedEntry {
 /** A backup file in the app's JSON format. */
 export function backupJson(nodes: SeedNode[], entries: SeedEntry[] = [], extra: Record<string, unknown> = {}): string {
   return JSON.stringify({
-    app: 'worktracklite',
+    app: 'where-time-flew',
     formatVersion: 2,
     exportedAt: new Date().toISOString(),
     nodes: nodes.map((n, i) => ({
@@ -81,7 +81,7 @@ export const ACME = [
 /** Loads the app on a fresh profile and restores `json` through the first-run screen. */
 export async function seed(page: Page, json: string, path = '/#/dashboard'): Promise<void> {
   await page.goto(path);
-  await expect(page.getByRole('heading', { name: 'Welcome to WorkTrackLite' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Where Time Flew' })).toBeVisible();
   await page
     .getByText('Restore a backup…')
     .locator('input[type=file]')
@@ -98,6 +98,7 @@ export async function readStore<T = Record<string, unknown>>(page: Page, store: 
   return page.evaluate(
     (name) =>
       new Promise<T[]>((resolve, reject) => {
+        // The database kept its pre-rename name (see DB_NAME in core/db.ts).
         const req = indexedDB.open('worktracklite');
         req.onerror = () => reject(req.error);
         req.onsuccess = () => {

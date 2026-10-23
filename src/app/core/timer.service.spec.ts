@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideTestDb, waitFor } from '../testing/test-db';
-import { WorkTrackDB } from './db';
+import { AppDB } from './db';
 import { DataService } from './data.service';
 import { TimerService } from './timer.service';
 
 describe('TimerService', () => {
-  let db: WorkTrackDB;
+  let db: AppDB;
   let data: DataService;
   let timer: TimerService;
   let nodeA: string;
